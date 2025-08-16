@@ -1,31 +1,48 @@
+import json
+import math
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
-from PyQt5.QtWidgets import (
-    QApplication, QGraphicsView, QGraphicsScene,
-    QGraphicsLineItem, QGraphicsEllipseItem, QGraphicsRectItem,
-    QGraphicsItem,QGraphicsTextItem,QGraphicsPixmapItem
-    ,QGraphicsItemGroup,QInputDialog,QFileDialog,QGraphicsPathItem,QMenu,QShortcut, QMessageBox,
-    QGraphicsPolygonItem)
-
-from PyQt5.QtCore import Qt, QPointF, QRectF,pyqtSignal,QLine,QLineF, QTimer
-from PyQt5.QtGui import (QPen, QColor, QPainter, QKeySequence,QFont,QPixmap, QBrush,QPainterPath,
-        QTransform, QPolygonF)
-from PyQt5.QtSvg import QGraphicsSvgItem
-import math, json
 import sip
 import svg.path
-from xml.dom import minidom
-import xml.etree.ElementTree as ET
-from svg.path import parse_path
-from svg.path import Line, CubicBezier, QuadraticBezier, Arc
 from dialogs import PropriedadesDialog  # se ainda não tiver
+from PyQt5.QtCore import QLine, QLineF, QPointF, QRectF, Qt, QTimer, pyqtSignal
+from PyQt5.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QKeySequence,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap,
+    QPolygonF,
+    QTransform,
+)
+from PyQt5.QtSvg import QGraphicsSvgItem
+from PyQt5.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QGraphicsEllipseItem,
+    QGraphicsItem,
+    QGraphicsItemGroup,
+    QGraphicsLineItem,
+    QGraphicsPathItem,
+    QGraphicsPixmapItem,
+    QGraphicsPolygonItem,
+    QGraphicsRectItem,
+    QGraphicsScene,
+    QGraphicsTextItem,
+    QGraphicsView,
+    QInputDialog,
+    QMenu,
+    QMessageBox,
+    QShortcut,
+)
+from svg.path import Arc, CubicBezier, Line, QuadraticBezier, parse_path
 
 
-
-
-
-
-
-class SnapMovableItem():
+class SnapMovableItem:
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionChange:
             scene = self.scene()
@@ -37,13 +54,11 @@ class SnapMovableItem():
                 return QPointF(x, y)
         return super().itemChange(change, value)
 
+
 class SnapPixmapItem(QGraphicsPixmapItem):
     def __init__(self, pixmap, parent=None):
         super().__init__(pixmap, parent)
-        self.setFlags(
-            QGraphicsItem.ItemIsMovable |
-            QGraphicsItem.ItemIsSelectable
-        )
+        self.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable)
         self.setCursor(Qt.SizeAllCursor)
 
     def itemChange(self, change, value):
@@ -64,7 +79,7 @@ class Handle(QGraphicsEllipseItem):
         self.setBrush(QColor("blue"))
         self.setPen(QPen(Qt.NoPen))
         self._bloqueado = False
-        
+
         # ⚙️ Flags de interação:
         self.setFlag(QGraphicsItem.ItemIsMovable, True)
         self.setFlag(QGraphicsItem.ItemIsSelectable, False)
@@ -81,7 +96,7 @@ class Handle(QGraphicsEllipseItem):
             return super().itemChange(change, value)
 
         if getattr(self, "_bloqueado", False):
-             return super().itemChange(change, value)
+            return super().itemChange(change, value)
         if change == self.ItemPositionChange and self.parentItem():
             parent = self.parentItem()
 
@@ -97,7 +112,7 @@ class Handle(QGraphicsEllipseItem):
                 spacing = scene.parent().grid_spacing
                 snapped = QPointF(
                     round(value.x() / spacing) * spacing,
-                    round(value.y() / spacing) * spacing
+                    round(value.y() / spacing) * spacing,
                 )
                 x = round(value.x() / spacing) * spacing
                 y = round(value.y() / spacing) * spacing
@@ -112,7 +127,11 @@ class Handle(QGraphicsEllipseItem):
 
             # SHIFT: trava ângulo
             if modifiers & Qt.ShiftModifier:
-                other = parent.handle_end if self is parent.handle_start else parent.handle_start
+                other = (
+                    parent.handle_end
+                    if self is parent.handle_start
+                    else parent.handle_start
+                )
                 delta = value - other.pos()
                 angle = math.atan2(delta.y(), delta.x())
                 snapped_angle = round(angle / (math.pi / 4)) * (math.pi / 4)
@@ -126,12 +145,11 @@ class Handle(QGraphicsEllipseItem):
         return super().itemChange(change, value)
 
 
-
 class EditableLine(QGraphicsLineItem):
     def __init__(self, start, end):
         super().__init__()
         self._construindo = True
-        self._carregando=False
+        self._carregando = False
         self.setPen(QPen(Qt.black, 2))
         self.setFlag(self.ItemIsSelectable)
         self.setZValue(+1)
@@ -142,10 +160,9 @@ class EditableLine(QGraphicsLineItem):
         self.handle_end._bloqueado = True
         self.estilo_ini = "aberta"
         self.estilo_fim = "aberta"
-        self.setas=[]
-        self.tamanho_extremidade=12
+        self.setas = []
+        self.tamanho_extremidade = 12
         self.show_handles = True  # por padrão no Designer
-
 
         self.handle_start.setVisible(False)
         self.handle_end.setVisible(False)
@@ -173,13 +190,13 @@ class EditableLine(QGraphicsLineItem):
             "rotation": self.rotation(),
             "scale_x": self.transform().m11(),
             "scale_y": self.transform().m22(),
-            "id": id(self)
+            "id": id(self),
         }
-    @classmethod
 
+    @classmethod
     def from_dict(cls, data):
-        linha=cls.__new__(cls)
-        linha._carregando=True
+        linha = cls.__new__(cls)
+        linha._carregando = True
         p1 = QPointF(data["x1"], data["y1"])
         p2 = QPointF(data["x2"], data["y2"])
         linha = cls(p1, p2)
@@ -193,10 +210,10 @@ class EditableLine(QGraphicsLineItem):
         linha.estilo_ini = data.get("estilo_ini", "aberta")
         linha.estilo_fim = data.get("estilo_fim", "aberta")
         tamanho_ext = data.get("tamanho_extremidade", None)
-        linha.x1=data.get("x1",0)
-        linha.x2=data.get("x2",0)
-        linha.y1=data.get("1",0)
-        linha.y2=data.get("y2",0)
+        linha.x1 = data.get("x1", 0)
+        linha.x2 = data.get("x2", 0)
+        linha.y1 = data.get("1", 0)
+        linha.y2 = data.get("y2", 0)
         t = QTransform()
         t.scale(data.get("scale_x", 1.0), data.get("scale_y", 1.0))
         t.rotate(data.get("rotation", 0))
@@ -257,21 +274,32 @@ class EditableLine(QGraphicsLineItem):
                 tamanho = getattr(ribbon, "tamanho_extremidade", 12) if ribbon else 12
 
             if estilo_ini != "Nenhuma":
-                forma_ini = criar_extremidade(p1, -direcao_normalizada, estilo_ini,
-                                            tamanho=tamanho, cor=self.pen().color(), tipo=tipo_ini)
+                forma_ini = criar_extremidade(
+                    p1,
+                    -direcao_normalizada,
+                    estilo_ini,
+                    tamanho=tamanho,
+                    cor=self.pen().color(),
+                    tipo=tipo_ini,
+                )
                 if forma_ini:
                     forma_ini.setZValue(self.zValue() + 1)
                     self.scene().addItem(forma_ini)
                     self._setas.append(forma_ini)
 
             if estilo_fim != "Nenhuma":
-                forma_fim = criar_extremidade(p2, direcao_normalizada, estilo_fim,
-                                            tamanho=tamanho, cor=self.pen().color(), tipo=tipo_fim)
+                forma_fim = criar_extremidade(
+                    p2,
+                    direcao_normalizada,
+                    estilo_fim,
+                    tamanho=tamanho,
+                    cor=self.pen().color(),
+                    tipo=tipo_fim,
+                )
                 if forma_fim:
                     forma_fim.setZValue(self.zValue() + 1)
                     self.scene().addItem(forma_fim)
                     self._setas.append(forma_fim)
-
 
     def itemChange(self, change, value):
         # Quando o item é removido da cena, apaga as setas associadas
@@ -282,8 +310,6 @@ class EditableLine(QGraphicsLineItem):
             self._setas = []
         return super().itemChange(change, value)
 
-
-
     def setSelected(self, selected):
         super().setSelected(selected)
         self.handle_start.setVisible(selected)
@@ -293,20 +319,17 @@ class EditableLine(QGraphicsLineItem):
         if self.show_handles:
             self.setPen(pen)
 
-    
-
-
 
 class EditablePolyline(QGraphicsItemGroup):
     def __init__(self, start_point_or_list, parent=None):
         super().__init__(parent)
         self.setFlags(QGraphicsItem.ItemIsSelectable | QGraphicsItem.ItemIsMovable)
         self.setZValue(+1)
-        self._carregando=False
+        self._carregando = False
         self.points = []
         self.lines = []
         self.handles = []
-        self.mode="caminho"
+        self.mode = "caminho"
         self.pen = QPen(Qt.black, 2)
         self.estilo_ini = "Nenhuma"
         self.estilo_fim = "Nenhuma"
@@ -336,19 +359,22 @@ class EditablePolyline(QGraphicsItemGroup):
             "scale_y": t.m22(),
             "x": self.pos().x(),
             "y": self.pos().y(),
-            "pontos": [[p.x() + self.pos().x(), p.y() + self.pos().y()] for p in self.points],
+            "pontos": [
+                [p.x() + self.pos().x(), p.y() + self.pos().y()] for p in self.points
+            ],
             "estilo_ini": self.estilo_ini,
             "estilo_fim": self.estilo_fim,
             "rotation": self.rotation(),
             "scale_x": self.transform().m11(),
             "scale_y": self.transform().m22(),
             "tamanho_extremidade": tamanho_ext,
-            "id": id(self)
+            "id": id(self),
         }
+
     @classmethod
     def from_dict(cls, data):
-        poly=cls.__new__(cls)
-        poly._carregando=True
+        poly = cls.__new__(cls)
+        poly._carregando = True
         x0 = data.get("x", 0)
         y0 = data.get("y", 0)
         pontos = [QPointF(p[0] - x0, p[1] - y0) for p in data["pontos"]]
@@ -372,10 +398,11 @@ class EditablePolyline(QGraphicsItemGroup):
         t.rotate(data.get("rotation", 0))
         poly.setTransform(t)
 
-        QTimer.singleShot(0, lambda: poly.update_extremidades(tamanho_override=tamanho_ext))
-        poly._carregando=True
+        QTimer.singleShot(
+            0, lambda: poly.update_extremidades(tamanho_override=tamanho_ext)
+        )
+        poly._carregando = True
         return poly
-
 
     def _get_ribbon(self):
         parent = self.scene().views()[0].parent() if self.scene().views() else None
@@ -384,6 +411,7 @@ class EditablePolyline(QGraphicsItemGroup):
                 return parent.ribbon
             parent = parent.parent()
         return None
+
     def itemChange(self, change, value):
         # Apaga extremidades quando a polyline sai da cena
         if change == QGraphicsItem.ItemSceneHasChanged and self.scene() is None:
@@ -398,10 +426,10 @@ class EditablePolyline(QGraphicsItemGroup):
             self.update_extremidades()
 
         return super().itemChange(change, value)
-    
+
     def mouseDoubleClickEvent(self, event):
         self.setSelected(True)  # Força visibilidade dos handles
-        super().mouseDoubleClickEvent(event)        
+        super().mouseDoubleClickEvent(event)
 
     def _adicionar_handle(self, point):
         handle = Handle(point.x(), point.y(), parent=None)
@@ -425,8 +453,6 @@ class EditablePolyline(QGraphicsItemGroup):
         self.lines.append(line)
         self.points.append(point)
         self._adicionar_handle(point)
-
-
 
     def setPen(self, pen):
         self.pen = pen
@@ -471,19 +497,22 @@ class EditablePolyline(QGraphicsItemGroup):
         cor = self.pen.color()
 
         if estilo_ini != "Nenhuma":
-            forma_ini = criar_extremidade(p1, -dir_ini, estilo_ini, tamanho=tamanho, cor=cor, tipo=tipo_ini)
+            forma_ini = criar_extremidade(
+                p1, -dir_ini, estilo_ini, tamanho=tamanho, cor=cor, tipo=tipo_ini
+            )
             if forma_ini:
-                forma_ini.setParentItem(self) 
+                forma_ini.setParentItem(self)
                 forma_ini.setZValue(self.zValue() + 1)
                 self._extremidades.append(forma_ini)
 
         if estilo_fim != "Nenhuma":
-            forma_fim = criar_extremidade(p2, dir_fim, estilo_fim, tamanho=tamanho, cor=cor, tipo=tipo_fim)
+            forma_fim = criar_extremidade(
+                p2, dir_fim, estilo_fim, tamanho=tamanho, cor=cor, tipo=tipo_fim
+            )
             if forma_fim:
-                forma_fim.setParentItem(self) 
+                forma_fim.setParentItem(self)
                 forma_fim.setZValue(self.zValue() + 1)
                 self._extremidades.append(forma_fim)
-
 
     def setSelected(self, selected):
         super().setSelected(selected)
@@ -509,20 +538,20 @@ class EditablePolyline(QGraphicsItemGroup):
                 line.setPen(pen)
 
 
-
 class EditableTextItem(QGraphicsTextItem):
     def __init__(self, text="Texto"):
         super().__init__(text)
         self.setFlags(
-            QGraphicsTextItem.ItemIsSelectable |
-            QGraphicsTextItem.ItemIsMovable
+            QGraphicsTextItem.ItemIsSelectable | QGraphicsTextItem.ItemIsMovable
         )
-        self.setTextInteractionFlags(Qt.TextEditorInteraction)  # já permite edição inicial
+        self.setTextInteractionFlags(
+            Qt.TextEditorInteraction
+        )  # já permite edição inicial
         self.setCursor(Qt.IBeamCursor)
 
     def mouseDoubleClickEvent(self, event):
-            self.setTextInteractionFlags(Qt.TextEditorInteraction)
-            super().mouseDoubleClickEvent(event)
+        self.setTextInteractionFlags(Qt.TextEditorInteraction)
+        super().mouseDoubleClickEvent(event)
 
     def focusOutEvent(self, event):
         self.setTextInteractionFlags(Qt.NoTextInteraction)
@@ -539,9 +568,10 @@ class EditableTextItem(QGraphicsTextItem):
                 return QPointF(x, y)
         return super().itemChange(change, value)
 
+
 class SvgObjectItem(QGraphicsItemGroup):
     def __init__(self, tag, parent=None):
-        self.tag=tag
+        self.tag = tag
         super().__init__(parent)
         self.setFlag(self.ItemIsMovable)
         self.setFlag(self.ItemIsSelectable)
@@ -550,6 +580,7 @@ class SvgObjectItem(QGraphicsItemGroup):
         self.path_items = []
         self.mode = "svg"  # <- para identificação no Ribbon
         self.pen = QPen(Qt.black, 2)
+
     def mouseDoubleClickEvent(self, event):
         self.setSelected(True)
         super().mouseDoubleClickEvent(event)
@@ -558,7 +589,7 @@ class SvgObjectItem(QGraphicsItemGroup):
         super().setSelected(selected)
 
         if selected:
-            if not hasattr(self, '_selecionado_outline'):
+            if not hasattr(self, "_selecionado_outline"):
                 ret = self.boundingRect()
                 self._selecionado_outline = QGraphicsRectItem(ret)
                 self._selecionado_outline.setParentItem(self)
@@ -566,10 +597,9 @@ class SvgObjectItem(QGraphicsItemGroup):
                 self._selecionado_outline.setBrush(QBrush(Qt.NoBrush))
                 self._selecionado_outline.setZValue(1e6)  # garantir que fique por cima
         else:
-            if hasattr(self, '_selecionado_outline'):
+            if hasattr(self, "_selecionado_outline"):
                 self.scene().removeItem(self._selecionado_outline)
                 del self._selecionado_outline
-
 
     def add_path(self, path_item):
         self.path_items.append(path_item)
@@ -582,11 +612,15 @@ class SvgObjectItem(QGraphicsItemGroup):
     def apply_brush(self, brush):
         for item in self.path_items:
             item.setBrush(brush)
-    
+
     def boundingRect(self):
         if not self.path_items:
             return QRectF()
-        rect = self.path_items[0].mapToParent(self.path_items[0].boundingRect()).boundingRect()
+        rect = (
+            self.path_items[0]
+            .mapToParent(self.path_items[0].boundingRect())
+            .boundingRect()
+        )
         for item in self.path_items[1:]:
             mapped = item.mapToParent(item.boundingRect()).boundingRect()
             rect = rect.united(mapped)
@@ -603,12 +637,18 @@ class SvgObjectItem(QGraphicsItemGroup):
                 d = child.data(1) or self.path_to_svg_d(child.path())
                 pen = child.pen()
                 brush = child.brush()
-                children.append({
-                    "d": d,
-                    "stroke": pen.color().name(),
-                    "stroke-width": pen.widthF(),
-                    "fill": brush.color().name() if brush.style() != Qt.NoBrush else "none"
-                })
+                children.append(
+                    {
+                        "d": d,
+                        "stroke": pen.color().name(),
+                        "stroke-width": pen.widthF(),
+                        "fill": (
+                            brush.color().name()
+                            if brush.style() != Qt.NoBrush
+                            else "none"
+                        ),
+                    }
+                )
 
         return {
             "tipo": "svg",
@@ -620,9 +660,7 @@ class SvgObjectItem(QGraphicsItemGroup):
             "scale_x": self.transform().m11(),
             "scale_y": self.transform().m22(),
             "rotation": self.rotation(),
-            "id": id(self) 
-            
-
+            "id": id(self),
         }
 
     @classmethod
@@ -682,10 +720,9 @@ class SvgObjectItem(QGraphicsItemGroup):
 
             grupo.add_path(path_item)
 
-            
         return grupo
 
-    def path_to_svg_d(self,qpath: QPainterPath) -> str:
+    def path_to_svg_d(self, qpath: QPainterPath) -> str:
         if qpath.data(1) is None:
             d = self.path_to_svg_d(path_item.path())
             path_item.setData(1, d)
@@ -701,6 +738,7 @@ class SvgObjectItem(QGraphicsItemGroup):
             i += 1
         return " ".join(elements)
 
+
 class EditableVariable(QGraphicsTextItem):
     def __init__(self, tag="", casas=2, digitos=4, parent=None):
         super().__init__(parent)
@@ -708,8 +746,7 @@ class EditableVariable(QGraphicsTextItem):
         self.casas = casas
         self.digitos = digitos
         self.setFlags(
-            QGraphicsTextItem.ItemIsSelectable |
-            QGraphicsTextItem.ItemIsMovable
+            QGraphicsTextItem.ItemIsSelectable | QGraphicsTextItem.ItemIsMovable
         )
         self.setFont(QFont("Microsoft Sans Serif", 12))
         self.setDefaultTextColor(Qt.black)
@@ -726,14 +763,15 @@ class EditableVariable(QGraphicsTextItem):
             "z": self.zValue(),
             "color": self.defaultTextColor().name(),
             "font": self.font().toString(),
-            "id": id(self)
+            "id": id(self),
         }
+
     @classmethod
     def from_dict(cls, data):
         var = cls(
             tag=data.get("tag", ""),
             casas=data.get("casas", 2),
-            digitos=data.get("digitos", 4)
+            digitos=data.get("digitos", 4),
         )
         var.setPos(QPointF(data.get("x", 0), data.get("y", 0)))
         var.setZValue(data.get("z", 0))
@@ -747,7 +785,7 @@ class EditableVariable(QGraphicsTextItem):
 
         var.atualizar_placeholder()
         return var
-    
+
     def atualizar_placeholder(self):
         parte_int = "X" * self.digitos
         parte_dec = "X" * self.casas
@@ -763,6 +801,7 @@ class EditableVariable(QGraphicsTextItem):
         action = menu.exec_(event.screenPos())
         if action == prop_action:
             from dialogs import VariableDialog
+
             dlg = VariableDialog(None, self.tag, self.casas, self.digitos)
             if dlg.exec_() == dlg.Accepted:
                 data = dlg.get_data()
@@ -770,9 +809,11 @@ class EditableVariable(QGraphicsTextItem):
                 self.casas = data["casas"]
                 self.digitos = data["digitos"]
                 self.atualizar_placeholder()
+
     def mouseDoubleClickEvent(self, event):
         """Abre o diálogo de propriedades no duplo clique."""
         from dialogs import VariableDialog
+
         dlg = VariableDialog(None, self.tag, self.casas, self.digitos)
         if dlg.exec_() == dlg.Accepted:
             data = dlg.get_data()
@@ -780,7 +821,7 @@ class EditableVariable(QGraphicsTextItem):
             self.casas = data["casas"]
             self.digitos = data["digitos"]
             self.atualizar_placeholder()
-        super().mouseDoubleClickEvent(event)                
+        super().mouseDoubleClickEvent(event)
 
 
 class SnapScene(QGraphicsScene):
@@ -799,7 +840,6 @@ class SnapScene(QGraphicsScene):
         except RuntimeError:
             pass  # evita quebra total se objeto foi deletado
 
-
     def removeItem(self, item):
         if sip.isdeleted(self):
             return
@@ -813,7 +853,6 @@ class SnapScene(QGraphicsScene):
         except RuntimeError:
             pass
 
-
     def clear(self):
         if sip.isdeleted(self):
             return
@@ -824,7 +863,9 @@ class SnapScene(QGraphicsScene):
             pass
 
     def get_snap_point(self, pos, threshold=10):
-        for handle in self.snap_points[:]:  # faz cópia da lista para iterar com segurança
+        for handle in self.snap_points[
+            :
+        ]:  # faz cópia da lista para iterar com segurança
             try:
                 if handle.scene() != self:
                     self.snap_points.remove(handle)
@@ -836,7 +877,6 @@ class SnapScene(QGraphicsScene):
                 # Handle já foi deletado (wrapped C/C++ object), remove da lista
                 self.snap_points.remove(handle)
         return pos
-
 
 
 class SvgCanvas(QGraphicsView):
@@ -879,7 +919,7 @@ class SvgCanvas(QGraphicsView):
         self.temp_line_conector = None
         self.tracking_line = None
 
-        #NAVEGAÇÃO
+        # NAVEGAÇÃO
         self.zoom_factor = 1.0
         self.zoom_min = 0.05
         self.zoom_max = 20.0
@@ -891,11 +931,11 @@ class SvgCanvas(QGraphicsView):
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.mostrar_menu_contexto)
         shortcut_props = QShortcut(QKeySequence("Ctrl+P"), self)
-        shortcut_props.activated.connect(lambda: self.abrir_propriedades(
-            self.scene.selectedItems()[0] if self.scene.selectedItems() else None
-        ))
-
-
+        shortcut_props.activated.connect(
+            lambda: self.abrir_propriedades(
+                self.scene.selectedItems()[0] if self.scene.selectedItems() else None
+            )
+        )
 
     def snap_to_track(self, current):
         threshold = 5
@@ -903,15 +943,27 @@ class SvgCanvas(QGraphicsView):
             if isinstance(item, Handle):
                 hx, hy = item.scenePos().x(), item.scenePos().y()
                 if abs(current.x() - hx) < threshold:
-                    return QPointF(hx, current.y()), 'v', hx  # Snap vertical
+                    return QPointF(hx, current.y()), "v", hx  # Snap vertical
                 if abs(current.y() - hy) < threshold:
-                    return QPointF(current.x(), hy), 'h', hy  # Snap horizontal
+                    return QPointF(current.x(), hy), "h", hy  # Snap horizontal
         return current, None, None
-    
-    def _alinhar_objetos(self, direcao):
-        itens = [i for i in self.scene.selectedItems()
-            if isinstance(i, (QGraphicsItemGroup,EditableLine, EditableTextItem, QGraphicsPixmapItem,EditablePolyline,SvgObjectItem))]
 
+    def _alinhar_objetos(self, direcao):
+        itens = [
+            i
+            for i in self.scene.selectedItems()
+            if isinstance(
+                i,
+                (
+                    QGraphicsItemGroup,
+                    EditableLine,
+                    EditableTextItem,
+                    QGraphicsPixmapItem,
+                    EditablePolyline,
+                    SvgObjectItem,
+                ),
+            )
+        ]
 
         if len(itens) < 2:
             return
@@ -959,9 +1011,20 @@ class SvgCanvas(QGraphicsView):
         self._salvar_estado()
 
     def _distribuir_objetos(self, direcao):
-        itens = [i for i in self.scene.selectedItems()
-                if isinstance(i, (EditableLine, EditableTextItem, QGraphicsPixmapItem,
-                                EditablePolyline, SvgObjectItem))]
+        itens = [
+            i
+            for i in self.scene.selectedItems()
+            if isinstance(
+                i,
+                (
+                    EditableLine,
+                    EditableTextItem,
+                    QGraphicsPixmapItem,
+                    EditablePolyline,
+                    SvgObjectItem,
+                ),
+            )
+        ]
 
         if len(itens) < 3:
             return  # distribuição só faz sentido com 3 ou mais objetos
@@ -995,38 +1058,41 @@ class SvgCanvas(QGraphicsView):
 
         self._salvar_estado()
 
-
     def _copiar_itens(self):
         self._clipboard = []
         for item in self.scene.selectedItems():
             if isinstance(item, EditableLine):
-                self._clipboard.append({
-                    "tipo": "linha",
-                    "x1": item.handle_start.x(),
-                    "y1": item.handle_start.y(),
-                    "x2": item.handle_end.x(),
-                    "y2": item.handle_end.y(),
-                    "scale_x": self.transform().m11(),
-                    "scale_y": self.transform().m22() 
-                })
+                self._clipboard.append(
+                    {
+                        "tipo": "linha",
+                        "x1": item.handle_start.x(),
+                        "y1": item.handle_start.y(),
+                        "x2": item.handle_end.x(),
+                        "y2": item.handle_end.y(),
+                        "scale_x": self.transform().m11(),
+                        "scale_y": self.transform().m22(),
+                    }
+                )
             elif isinstance(item, EditableTextItem):
                 font = item.font()
-                self._clipboard.append({
-                    "tipo": "texto",
-                    "texto": item.toPlainText(),
-                    "x": item.pos().x(),
-                    "y": item.pos().y(),
-                    "fonte": font.family(),
-                    "tamanho": font.pointSize(),
-                    "negrito": font.bold(),
-                    "italico": font.italic(),
-                    "sublinhado": font.underline(),
-                    "cor": item.defaultTextColor().name(),
-                    "scale_x": self.transform().m11(),
-                    "scale_y": self.transform().m22()                   
-                })
+                self._clipboard.append(
+                    {
+                        "tipo": "texto",
+                        "texto": item.toPlainText(),
+                        "x": item.pos().x(),
+                        "y": item.pos().y(),
+                        "fonte": font.family(),
+                        "tamanho": font.pointSize(),
+                        "negrito": font.bold(),
+                        "italico": font.italic(),
+                        "sublinhado": font.underline(),
+                        "cor": item.defaultTextColor().name(),
+                        "scale_x": self.transform().m11(),
+                        "scale_y": self.transform().m22(),
+                    }
+                )
             elif isinstance(item, SvgObjectItem):
-                self._clipboard.append(item.to_dict())                
+                self._clipboard.append(item.to_dict())
 
     def _colar_itens(self):
         if not hasattr(self, "_clipboard"):
@@ -1042,7 +1108,7 @@ class SvgCanvas(QGraphicsView):
                 linha.setZValue(z_topo_livre(self.scene))
                 t = QTransform()
                 t.scale(obj.get("scale_x", 1.0), obj.get("scale_y", 1.0))
-                linha.setTransform(t)   
+                linha.setTransform(t)
                 self.scene.addItem(linha)
             elif obj["tipo"] == "texto":
                 texto = EditableTextItem(obj["texto"])
@@ -1091,7 +1157,9 @@ class SvgCanvas(QGraphicsView):
                                 end,
                             )
                         elif isinstance(seg, Arc):
-                            qt_path.lineTo(end)  # ← substitua se quiser conversão real de arco
+                            qt_path.lineTo(
+                                end
+                            )  # ← substitua se quiser conversão real de arco
 
                     path_item = QGraphicsPathItem(qt_path)
                     path_item.setData(1, d)
@@ -1112,7 +1180,6 @@ class SvgCanvas(QGraphicsView):
 
                 self.scene.addItem(svg_item)
 
-
         self._registrar_estado()
         self._salvar_estado()
 
@@ -1125,7 +1192,6 @@ class SvgCanvas(QGraphicsView):
 
     def desenhar_grid(self):
         # 🧽 Remove grupo antigo do grid (se existir)
-
 
         if self.grid_group and self.grid_group.scene() == self.scene:
             self.scene.removeItem(self.grid_group)
@@ -1146,7 +1212,7 @@ class SvgCanvas(QGraphicsView):
                 ponto = QGraphicsEllipseItem(x - 0.5, y - 0.5, 1, 1)
                 ponto.setBrush(cor_ponto)
                 ponto.setZValue(-9999)
-                #ponto.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+                # ponto.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
                 self.grid_group.addToGroup(ponto)
 
         print("Desenhando grid...")
@@ -1156,31 +1222,29 @@ class SvgCanvas(QGraphicsView):
     def keyPressEvent(self, event):
         if sip.isdeleted(self) or sip.isdeleted(self.scene):
             return
-        
+
         item = self.scene.focusItem()
         if isinstance(item, QGraphicsTextItem):
-                if event.key() == Qt.Key_Escape:
-                    # Desativa modo de edição de texto, se houver foco
-                    if isinstance(item, QGraphicsTextItem):
-                        item.setTextInteractionFlags(Qt.NoTextInteraction)
-                        self.scene.clearFocus()
-                    
-                    # 🔵 Desseleciona todos os itens
-                    for obj in self.scene.selectedItems():
-                        obj.setSelected(False)
-
-                    # 🔵 Remove foco de qualquer item
+            if event.key() == Qt.Key_Escape:
+                # Desativa modo de edição de texto, se houver foco
+                if isinstance(item, QGraphicsTextItem):
+                    item.setTextInteractionFlags(Qt.NoTextInteraction)
                     self.scene.clearFocus()
-                    self.clearFocus()
-                    
-                    return
-                
-                elif item.textInteractionFlags() == Qt.TextEditorInteraction:
-                    super().keyPressEvent(event)
-                    return
-                
 
-                                
+                # 🔵 Desseleciona todos os itens
+                for obj in self.scene.selectedItems():
+                    obj.setSelected(False)
+
+                # 🔵 Remove foco de qualquer item
+                self.scene.clearFocus()
+                self.clearFocus()
+
+                return
+
+            elif item.textInteractionFlags() == Qt.TextEditorInteraction:
+                super().keyPressEvent(event)
+                return
+
         if event.matches(QKeySequence.Undo):
             print("CTRL+Z")
             self._desfazer()
@@ -1203,9 +1267,12 @@ class SvgCanvas(QGraphicsView):
             self.importar_svg()
 
         elif event.matches(QKeySequence.SelectAll):
-                    self._selecionar_tudo()
+            self._selecionar_tudo()
 
-        elif event.modifiers() == (Qt.ControlModifier | Qt.ShiftModifier) and event.key() == Qt.Key_A:
+        elif (
+            event.modifiers() == (Qt.ControlModifier | Qt.ShiftModifier)
+            and event.key() == Qt.Key_A
+        ):
             self._inverter_selecao()
 
         # Ctrl+C → copiar
@@ -1235,14 +1302,10 @@ class SvgCanvas(QGraphicsView):
                 self.set_mode("selecionar")
                 return
 
-
-
         else:
             if sip.isdeleted(self) or sip.isdeleted(self.scene):
                 return
             super().keyPressEvent(event)
-        
-
 
     def mousePressEvent(self, event):
         if sip.isdeleted(self) or sip.isdeleted(self.scene):
@@ -1271,8 +1334,10 @@ class SvgCanvas(QGraphicsView):
             point = self.mapToScene(event.pos())
             if self.snap_to_grid:
                 spacing = self.grid_spacing
-                point = QPointF(round(point.x() / spacing) * spacing,
-                                round(point.y() / spacing) * spacing)
+                point = QPointF(
+                    round(point.x() / spacing) * spacing,
+                    round(point.y() / spacing) * spacing,
+                )
             self.start_point = point
             self.temp_line = QGraphicsLineItem()
             self.temp_line.setPen(QPen(Qt.gray, 1, Qt.DashLine))
@@ -1282,8 +1347,10 @@ class SvgCanvas(QGraphicsView):
             pos = self.mapToScene(event.pos())
             if self.snap_to_grid:
                 spacing = self.grid_spacing
-                pos = QPointF(round(pos.x() / spacing) * spacing,
-                            round(pos.y() / spacing) * spacing)
+                pos = QPointF(
+                    round(pos.x() / spacing) * spacing,
+                    round(pos.y() / spacing) * spacing,
+                )
 
             texto = EditableTextItem("Texto")
             texto.setFont(QFont("Microsoft Sans Serif", 12))
@@ -1299,7 +1366,9 @@ class SvgCanvas(QGraphicsView):
 
         elif self.mode == "inserir_imagem" and event.button() == Qt.LeftButton:
             self.selection_start = scene_pos
-            self.selection_rect = QGraphicsRectItem(QRectF(self.selection_start, self.selection_start))
+            self.selection_rect = QGraphicsRectItem(
+                QRectF(self.selection_start, self.selection_start)
+            )
             self.selection_rect.setPen(QPen(Qt.red, 1, Qt.DashLine))
             self.selection_rect.setBrush(Qt.transparent)
             self.selection_rect.setZValue(10)
@@ -1309,8 +1378,10 @@ class SvgCanvas(QGraphicsView):
             point = self.mapToScene(event.pos())
             if self.snap_to_grid:
                 spacing = self.grid_spacing
-                point = QPointF(round(point.x() / spacing) * spacing,
-                                round(point.y() / spacing) * spacing)
+                point = QPointF(
+                    round(point.x() / spacing) * spacing,
+                    round(point.y() / spacing) * spacing,
+                )
 
             point = self.scene.get_snap_point(point)
 
@@ -1331,8 +1402,6 @@ class SvgCanvas(QGraphicsView):
                 self.scene.addItem(self.polyline_temp)
                 self.polyline_temp.update_extremidades()
 
-
-        
         elif self.mode == "inserir_svg_path" and event.button() == Qt.LeftButton:
             pos = self.mapToScene(event.pos())
             if hasattr(self, "svg_temp_grupo") and self.svg_temp_grupo:
@@ -1343,6 +1412,7 @@ class SvgCanvas(QGraphicsView):
 
         elif self.mode == "variavel":
             from dialogs import VariableDialog
+
             dlg = VariableDialog(self)
             if dlg.exec_() == dlg.Accepted:
                 data = dlg.get_data()
@@ -1354,18 +1424,18 @@ class SvgCanvas(QGraphicsView):
             return
 
         if self.zoom_mode == "retangulo" and event.button() == Qt.LeftButton:
-                self.zoom_start_point = self.mapToScene(event.pos())
-                self.zoom_rect_item = QGraphicsRectItem(QRectF(self.zoom_start_point, self.zoom_start_point))
-                self.zoom_rect_item.setPen(QPen(Qt.blue, 1, Qt.DashLine))
-                self.zoom_rect_item.setBrush(Qt.transparent)
-                self.zoom_rect_item.setZValue(1000)
-                self.scene.addItem(self.zoom_rect_item)
-                return
+            self.zoom_start_point = self.mapToScene(event.pos())
+            self.zoom_rect_item = QGraphicsRectItem(
+                QRectF(self.zoom_start_point, self.zoom_start_point)
+            )
+            self.zoom_rect_item.setPen(QPen(Qt.blue, 1, Qt.DashLine))
+            self.zoom_rect_item.setBrush(Qt.transparent)
+            self.zoom_rect_item.setZValue(1000)
+            self.scene.addItem(self.zoom_rect_item)
+            return
 
         if hasattr(self.parent(), "atualizar_estilo_ativo"):
             self.parent().atualizar_estilo_ativo()
-
-
 
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
@@ -1375,8 +1445,10 @@ class SvgCanvas(QGraphicsView):
 
             if self.snap_to_grid:
                 spacing = self.grid_spacing
-                current = QPointF(round(current.x() / spacing) * spacing,
-                                round(current.y() / spacing) * spacing)
+                current = QPointF(
+                    round(current.x() / spacing) * spacing,
+                    round(current.y() / spacing) * spacing,
+                )
 
             current = self.scene.get_snap_point(current)
 
@@ -1387,8 +1459,9 @@ class SvgCanvas(QGraphicsView):
                 angle = math.atan2(dy, dx)
                 snapped_angle = round(angle / (math.pi / 4)) * (math.pi / 4)
                 length = math.hypot(dx, dy)
-                current = self.start_point + QPointF(length * math.cos(snapped_angle),
-                                                    length * math.sin(snapped_angle))
+                current = self.start_point + QPointF(
+                    length * math.cos(snapped_angle), length * math.sin(snapped_angle)
+                )
 
             # SNAP TRACK COM HANDLES
             if self.tracking_line:
@@ -1400,11 +1473,15 @@ class SvgCanvas(QGraphicsView):
                 hpos = handle.scenePos()
                 if abs(current.x() - hpos.x()) < tolerance:
                     current.setX(hpos.x())
-                    self.tracking_line = QGraphicsLineItem(hpos.x(), hpos.y(), current.x(), current.y())
+                    self.tracking_line = QGraphicsLineItem(
+                        hpos.x(), hpos.y(), current.x(), current.y()
+                    )
                     break
                 if abs(current.y() - hpos.y()) < tolerance:
                     current.setY(hpos.y())
-                    self.tracking_line = QGraphicsLineItem(hpos.x(), hpos.y(), current.x(), current.y())
+                    self.tracking_line = QGraphicsLineItem(
+                        hpos.x(), hpos.y(), current.x(), current.y()
+                    )
                     break
 
             if self.tracking_line:
@@ -1413,9 +1490,11 @@ class SvgCanvas(QGraphicsView):
                 self.tracking_line.setZValue(-2)
                 self.scene.addItem(self.tracking_line)
 
-            self.temp_line.setLine(self.start_point.x(), self.start_point.y(), current.x(), current.y())
+            self.temp_line.setLine(
+                self.start_point.x(), self.start_point.y(), current.x(), current.y()
+            )
             self.end_point = current
-        
+
         elif self.mode == "selecionar" and self.selection_rect:
             current_pos = self.mapToScene(event.pos())
             rect = QRectF(self.selection_start, current_pos).normalized()
@@ -1434,14 +1513,16 @@ class SvgCanvas(QGraphicsView):
             current = self.mapToScene(event.pos())
             rect = QRectF(self.selection_start, current).normalized()
             self.selection_rect.setRect(rect)
-            
+
         elif self.mode == "caminho" and self.polyline_temp:
             current = self.mapToScene(event.pos())
 
             if self.snap_to_grid:
                 spacing = self.grid_spacing
-                current = QPointF(round(current.x() / spacing) * spacing,
-                                round(current.y() / spacing) * spacing)
+                current = QPointF(
+                    round(current.x() / spacing) * spacing,
+                    round(current.y() / spacing) * spacing,
+                )
 
             current = self.scene.get_snap_point(current)
             last_point = self.polyline_temp.points[-1]
@@ -1467,11 +1548,15 @@ class SvgCanvas(QGraphicsView):
                 hpos = handle.scenePos()
                 if abs(current.x() - hpos.x()) < tolerance:
                     current.setX(hpos.x())
-                    self.tracking_line = QGraphicsLineItem(hpos.x(), hpos.y(), current.x(), current.y())
+                    self.tracking_line = QGraphicsLineItem(
+                        hpos.x(), hpos.y(), current.x(), current.y()
+                    )
                     break
                 if abs(current.y() - hpos.y()) < tolerance:
                     current.setY(hpos.y())
-                    self.tracking_line = QGraphicsLineItem(hpos.x(), hpos.y(), current.x(), current.y())
+                    self.tracking_line = QGraphicsLineItem(
+                        hpos.x(), hpos.y(), current.x(), current.y()
+                    )
                     break
 
             if self.tracking_line:
@@ -1482,21 +1567,18 @@ class SvgCanvas(QGraphicsView):
             # Linha temporária do segmento
             if self.temp_line_conector:
                 self.scene.removeItem(self.temp_line_conector)
-            self.temp_line_conector = QGraphicsLineItem(last_point.x(), last_point.y(), current.x(), current.y())
+            self.temp_line_conector = QGraphicsLineItem(
+                last_point.x(), last_point.y(), current.x(), current.y()
+            )
             self.temp_line_conector.setPen(QPen(Qt.gray, 1, Qt.DashLine))
             self.temp_line_conector.setZValue(0)
             self.scene.addItem(self.temp_line_conector)
 
         if self.zoom_mode == "retangulo" and self.zoom_rect_item:
-                atual = self.mapToScene(event.pos())
-                rect = QRectF(self.zoom_start_point, atual).normalized()
-                self.zoom_rect_item.setRect(rect)
-                return
-
-       
-
-
-
+            atual = self.mapToScene(event.pos())
+            rect = QRectF(self.zoom_start_point, atual).normalized()
+            self.zoom_rect_item.setRect(rect)
+            return
 
     def mouseReleaseEvent(self, event):
         if sip.isdeleted(self) or sip.isdeleted(self.scene):
@@ -1506,16 +1588,25 @@ class SvgCanvas(QGraphicsView):
         except RuntimeError:
             return
 
-        if self.mode == "linha" and self.temp_line and self.start_point and event.button() == Qt.LeftButton:
+        if (
+            self.mode == "linha"
+            and self.temp_line
+            and self.start_point
+            and event.button() == Qt.LeftButton
+        ):
             if hasattr(self, "end_point") and self.end_point:
                 rect = self.sceneRect()
-                if not (rect.contains(self.start_point) and rect.contains(self.end_point)):
+                if not (
+                    rect.contains(self.start_point) and rect.contains(self.end_point)
+                ):
                     self.scene.removeItem(self.temp_line)
                 else:
                     line = EditableLine(self.start_point, self.end_point)
                     line.setZValue(z_topo_livre(self.scene))
                     self.scene.addItem(line)
-                    line.update_line(line.tamanho_extremidade)  # ✅ agora a cena já está atribuída corretamente
+                    line.update_line(
+                        line.tamanho_extremidade
+                    )  # ✅ agora a cena já está atribuída corretamente
 
                 self.scene.removeItem(self.temp_line)
 
@@ -1534,7 +1625,11 @@ class SvgCanvas(QGraphicsView):
             # Determina o modo de seleção com base na direção
             if self.selection_start.x() < rect.right():  # esquerda → direita
                 # selecionar apenas itens totalmente contidos
-                itens = [i for i in self.scene.items(rect) if rect.contains(i.sceneBoundingRect())]
+                itens = [
+                    i
+                    for i in self.scene.items(rect)
+                    if rect.contains(i.sceneBoundingRect())
+                ]
             else:  # direita → esquerda
                 # selecionar itens tocados
                 itens = self.scene.items(rect)
@@ -1549,7 +1644,7 @@ class SvgCanvas(QGraphicsView):
             self.selection_rect = None
             self.selection_start = None
 
-               # 🔔 Aqui notifica o MainWindow
+            # 🔔 Aqui notifica o MainWindow
             if hasattr(self.parent(), "atualizar_estilo_ativo"):
                 self.parent().atualizar_estilo_ativo()
 
@@ -1565,8 +1660,13 @@ class SvgCanvas(QGraphicsView):
 
             rect = self.selection_rect.rect()
             imagem = QPixmap(self.imagem_a_importar)
-                        
-            scaled = imagem.scaled(int(rect.width()), int(rect.height()), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+            scaled = imagem.scaled(
+                int(rect.width()),
+                int(rect.height()),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation,
+            )
             item = SnapPixmapItem(scaled)
             item.setPos(QPointF(rect.x(), rect.y()))
             item.setZValue(z_topo_livre(self.scene))
@@ -1585,11 +1685,6 @@ class SvgCanvas(QGraphicsView):
             if rect.width() > 10 and rect.height() > 10:
                 self.fitInView(rect, Qt.KeepAspectRatio)
             return
-
-
-
-
-
 
     def _restaurar_estado(self, estado):
         # Remove apenas itens de conteúdo (não o fundo)
@@ -1618,15 +1713,15 @@ class SvgCanvas(QGraphicsView):
                 self.scene.addItem(texto)
             elif obj["tipo"] == "imagem":
                 import base64
+
                 from PyQt5.QtCore import QBuffer
+
                 imagem_bytes = base64.b64decode(obj["imagem_base64"])
                 image = QPixmap()
                 image.loadFromData(imagem_bytes, "PNG")
                 item = SnapPixmapItem(image)
                 item.setPos(QPointF(obj["x"], obj["y"]))
                 self.scene.addItem(item)
-
-
 
         self.desenhar_grid()  # redesenha grade se visível
 
@@ -1645,14 +1740,16 @@ class SvgCanvas(QGraphicsView):
         self.historico.append(estado)
         self._restaurar_estado(estado)
 
-
     def _reconstruir_a_partir_json(self, estado_json):
         from PyQt5.QtGui import QColor, QFont
+
         self.scene.clear()
         estado = json.loads(estado_json)
         for obj in estado:
             if obj["tipo"] == "linha":
-                linha = EditableLine(QPointF(obj["x1"], obj["y1"]), QPointF(obj["x2"], obj["y2"]))
+                linha = EditableLine(
+                    QPointF(obj["x1"], obj["y1"]), QPointF(obj["x2"], obj["y2"])
+                )
                 self.scene.addItem(linha)
             elif obj["tipo"] == "texto":
                 texto = EditableTextItem(obj["texto"])
@@ -1665,45 +1762,48 @@ class SvgCanvas(QGraphicsView):
                 texto.setDefaultTextColor(QColor(obj["cor"]))
                 self.scene.addItem(texto)
 
-
     def _registrar_estado(self):
         estado = []
         for item in self.scene.items():
             if isinstance(item, EditableLine):
-                estado.append({
-                    "tipo": "linha",
-                    "x1": item.handle_start.x(),
-                    "y1": item.handle_start.y(),
-                    "x2": item.handle_end.x(),
-                    "y2": item.handle_end.y(),
-                })
+                estado.append(
+                    {
+                        "tipo": "linha",
+                        "x1": item.handle_start.x(),
+                        "y1": item.handle_start.y(),
+                        "x2": item.handle_end.x(),
+                        "y2": item.handle_end.y(),
+                    }
+                )
             elif isinstance(item, EditableTextItem):
-                estado.append({
-                    "tipo": "texto",
-                    "texto": item.toPlainText(),
-                    "x": item.pos().x(),
-                    "y": item.pos().y(),
-                    "fonte": item.font().family(),
-                    "tamanho": item.font().pointSize(),
-                    "negrito": item.font().bold(),
-                    "italico": item.font().italic(),
-                    "sublinhado": item.font().underline(),
-                    "cor": item.defaultTextColor().name()
-                })
+                estado.append(
+                    {
+                        "tipo": "texto",
+                        "texto": item.toPlainText(),
+                        "x": item.pos().x(),
+                        "y": item.pos().y(),
+                        "fonte": item.font().family(),
+                        "tamanho": item.font().pointSize(),
+                        "negrito": item.font().bold(),
+                        "italico": item.font().italic(),
+                        "sublinhado": item.font().underline(),
+                        "cor": item.defaultTextColor().name(),
+                    }
+                )
             elif isinstance(item, QGraphicsPixmapItem):
-                estado.append({
-                    "tipo": "imagem",
-                    "arquivo": "",  # opcional: manter caminho se quiser reabrir
-                    "x": item.pos().x(),
-                    "y": item.pos().y(),
-                    "largura": item.pixmap().width(),
-                    "altura": item.pixmap().height(),
-                    "imagem_base64": self._pixmap_to_base64(item.pixmap())
-            })
-
+                estado.append(
+                    {
+                        "tipo": "imagem",
+                        "arquivo": "",  # opcional: manter caminho se quiser reabrir
+                        "x": item.pos().x(),
+                        "y": item.pos().y(),
+                        "largura": item.pixmap().width(),
+                        "altura": item.pixmap().height(),
+                        "imagem_base64": self._pixmap_to_base64(item.pixmap()),
+                    }
+                )
 
         return estado  # ✅ agora retorna
-
 
     def _salvar_estado(self):
         estado_atual = self._registrar_estado()
@@ -1716,17 +1816,14 @@ class SvgCanvas(QGraphicsView):
         if hasattr(self.parent(), "marcar_modificado"):
             self.parent().marcar_modificado(True)
 
-
-
-
     def set_area_util(self, largura, altura, cor_fundo=None):
-        self.area_largura = largura   # ✅ armazena largura atual
-        self.area_altura = altura     # ✅ armazena altura atual
+        self.area_largura = largura  # ✅ armazena largura atual
+        self.area_altura = altura  # ✅ armazena altura atual
         self.setSceneRect(0, 0, largura, altura)
         self.desenhar_grid()
         # Cor geral do fundo (fora da área útil)
         self.setBackgroundBrush(QColor("#FFFFA9"))
-        
+
         # Remove bordas anteriores (se quiser múltiplos "Novos Projetos")
         for item in self.scene.items():
             if isinstance(item, QGraphicsRectItem) and item.zValue() == -10000:
@@ -1742,12 +1839,12 @@ class SvgCanvas(QGraphicsView):
     def set_grid_visible(self, visivel: bool):
         self.grid_visible = visivel
         self.desenhar_grid()
-        
+
     def set_grid_spacing(self, spacing):
         spacing = max(5, min(200, spacing))  # garante intervalo permitido
         self.grid_spacing = spacing
         self.desenhar_grid()
-        
+
     def set_mode(self, mode):
         self.mode = mode
         if sip.isdeleted(self) or sip.isdeleted(self.scene):
@@ -1759,7 +1856,6 @@ class SvgCanvas(QGraphicsView):
 
     def set_snap_to_grid(self, ativo: bool):
         self.snap_to_grid = ativo
-
 
     def _selecionar_tudo(self):
         for item in self.scene.items():
@@ -1795,8 +1891,11 @@ class SvgCanvas(QGraphicsView):
         return max((item.zValue() for item in self.scene.items()), default=0)
 
     def _z_minimo(self):
-        return min((item.zValue() for item in self.scene.items() if item.zValue() > -9998), default=0)
-    
+        return min(
+            (item.zValue() for item in self.scene.items() if item.zValue() > -9998),
+            default=0,
+        )
+
     def rotacionar_selecionados(self, angulo):
         for item in self.scene.selectedItems():
             if item.flags() & QGraphicsItem.ItemIsMovable:
@@ -1833,7 +1932,9 @@ class SvgCanvas(QGraphicsView):
         if event.modifiers() & Qt.ControlModifier:
             # Pan vertical
             delta_y = int(event.angleDelta().y() / 8)
-            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta_y)
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() - delta_y
+            )
             return
 
         # Fator de zoom
@@ -1851,8 +1952,6 @@ class SvgCanvas(QGraphicsView):
         # Ajustar para manter a posição original
         delta = new_pos - old_pos
         self.translate(delta.x(), delta.y())
-
-
 
     def zoom_mais(self):
         if self.zoom_factor < self.zoom_max:
@@ -1874,14 +1973,18 @@ class SvgCanvas(QGraphicsView):
 
     def _pixmap_to_base64(self, pixmap):
         import base64
+
         from PyQt5.QtCore import QBuffer, QByteArray
+
         buffer = QBuffer()
         buffer.open(QBuffer.WriteOnly)
         pixmap.save(buffer, "PNG")
         return base64.b64encode(buffer.data()).decode("utf-8")
-    
+
     def importar_svg(self):
-        caminho, _ = QFileDialog.getOpenFileName(self, "Selecionar SVG", "", "SVG Files (*.svg)")
+        caminho, _ = QFileDialog.getOpenFileName(
+            self, "Selecionar SVG", "", "SVG Files (*.svg)"
+        )
         if not caminho:
             return
 
@@ -1893,12 +1996,11 @@ class SvgCanvas(QGraphicsView):
         print("Encontrados", len(paths), "paths")
 
         tag, ok = QInputDialog.getText(self, "Definir TAG", "Digite a TAG do objeto:")
-        if not ok or not tag.strip():   
+        if not ok or not tag.strip():
             return
 
         grupo = SvgObjectItem(tag.strip())
 
-        
         for path_elem in paths:
             d = path_elem.attrib.get("d")
             if not d:
@@ -1946,7 +2048,7 @@ class SvgCanvas(QGraphicsView):
 
                 if (start - end).manhattanLength() > 0.001:  # tolerância
                     qt_path.closeSubpath()
-                    
+
             stroke = path_elem.attrib.get("stroke", "#000000")
             stroke_width = float(path_elem.attrib.get("stroke-width", 1.0))
             pen = QPen(QColor(stroke))
@@ -1968,8 +2070,6 @@ class SvgCanvas(QGraphicsView):
         self.svg_temp_grupo = grupo
         self.set_mode("inserir_svg_path")
 
-
-
     def mostrar_menu_contexto(self, pos):
         global_pos = self.mapToGlobal(pos)
         selecionados = self.scene.selectedItems()
@@ -1981,7 +2081,7 @@ class SvgCanvas(QGraphicsView):
         elif len(selecionados) == 1 and isinstance(selecionados[0], QGraphicsItemGroup):
             grupo = selecionados[0]
             filhos = grupo.childItems()
-            
+
             # Impede desagrupar grupo com exatamente 1 SVG
             if len(filhos) == 1 and isinstance(filhos[0], SvgObjectItem):
                 print("❌ Grupo contém apenas 1 SVG. Não pode ser desagrupado.")
@@ -1991,10 +2091,11 @@ class SvgCanvas(QGraphicsView):
             acao_desagrupar = menu.addAction("🔓 Desagrupar")
             acao_desagrupar.triggered.connect(lambda: self.desagrupar_itens(grupo))
 
-
         menu.addSeparator()
         acao_props = menu.addAction("ℹ️ Propriedades")
-        acao_props.triggered.connect(lambda: self.abrir_propriedades(selecionados[0] if selecionados else None))
+        acao_props.triggered.connect(
+            lambda: self.abrir_propriedades(selecionados[0] if selecionados else None)
+        )
 
         menu.exec_(global_pos)
 
@@ -2012,19 +2113,26 @@ class SvgCanvas(QGraphicsView):
 
         grupo.setSelected(False)
 
-
     def desagrupar_itens(self, grupo):
         if isinstance(grupo, SvgObjectItem):
-            QMessageBox.warning(self, "Desagrupar não permitido", "❌ Não é permitido desagrupar um objeto único.")
+            QMessageBox.warning(
+                self,
+                "Desagrupar não permitido",
+                "❌ Não é permitido desagrupar um objeto único.",
+            )
             return
 
         filhos = grupo.childItems()
 
         # Bloqueia caso o grupo tenha apenas 1 item que é um SvgObjectItem
         if len(filhos) == 1 and isinstance(filhos[0], SvgObjectItem):
-            QMessageBox.warning(self, "Desagrupar não permitido", "❌ Não é permitido desagrupar um objeto único.")
+            QMessageBox.warning(
+                self,
+                "Desagrupar não permitido",
+                "❌ Não é permitido desagrupar um objeto único.",
+            )
             return
-        
+
         if isinstance(grupo, EditablePolyline):
             data = grupo.to_dict()
             pontos = [QPointF(x, y) for x, y in data.get("pontos", [])]
@@ -2048,7 +2156,6 @@ class SvgCanvas(QGraphicsView):
         for item in filhos:
             item.setSelected(False)  # remove a seleção visual
 
-
     def abrir_propriedades(self, obj=None):
         """
         Abre as propriedades para o objeto selecionado ou para a tela.
@@ -2061,6 +2168,7 @@ class SvgCanvas(QGraphicsView):
         # Tratamento especial para cada tipo
         if isinstance(obj, EditableVariable):
             from dialogs import VariableDialog
+
             dlg = VariableDialog(self, obj.tag, obj.casas, obj.digitos)
             if dlg.exec_() == dlg.Accepted:
                 data = dlg.get_data()
@@ -2078,7 +2186,6 @@ class SvgCanvas(QGraphicsView):
         dlg = PropriedadesDialog(objeto=obj, parent=self)
         dlg.exec_()
 
-            
     def abrir_propriedades_tela(self):
         # Aqui você pode abrir um QDialog com:
         # - Cor de fundo
@@ -2095,7 +2202,6 @@ class SvgCanvas(QGraphicsView):
         #     • valor A / valor B
         ...
 
-
     def ativar_modo_inserir_variavel(self):
         self.mode = "variavel"
 
@@ -2105,13 +2211,12 @@ class SvgCanvas(QGraphicsView):
 
     def inserir_variavel(self):
         from dialogs import VariableDialog
+
         dlg = VariableDialog(self)
         if dlg.exec_() == dlg.Accepted:
             data = dlg.get_data()
             var = EditableVariable(
-                tag=data["tag"],
-                casas=data["casas"],
-                digitos=data["digitos"]
+                tag=data["tag"], casas=data["casas"], digitos=data["digitos"]
             )
             var.setPos(100, 100)  # posição inicial padrão
             self.scene.addItem(var)
@@ -2124,14 +2229,19 @@ def z_topo_livre(scene):
             z_max = item.zValue()
     return z_max + 1
 
+
 def criar_extremidade(pos, direcao, estilo, tamanho=12, cor=Qt.black, tipo="fechada"):
     ang = math.atan2(direcao.y(), direcao.x())
 
     if estilo == "Seta":
         if tipo == "fechada":
             # Seta sólida (triângulo)
-            p1 = pos + QPointF(-math.cos(ang + 0.4) * tamanho, -math.sin(ang + 0.4) * tamanho)
-            p2 = pos + QPointF(-math.cos(ang - 0.4) * tamanho, -math.sin(ang - 0.4) * tamanho)
+            p1 = pos + QPointF(
+                -math.cos(ang + 0.4) * tamanho, -math.sin(ang + 0.4) * tamanho
+            )
+            p2 = pos + QPointF(
+                -math.cos(ang - 0.4) * tamanho, -math.sin(ang - 0.4) * tamanho
+            )
             polygon = QPolygonF([pos, p1, p2])
             item = QGraphicsPolygonItem(polygon)
             item.setPen(QPen(cor))
@@ -2139,8 +2249,12 @@ def criar_extremidade(pos, direcao, estilo, tamanho=12, cor=Qt.black, tipo="fech
             return item
         else:
             # Seta aberta (">" com 2 linhas)
-            p1 = pos + QPointF(-math.cos(ang + 0.4) * tamanho, -math.sin(ang + 0.4) * tamanho)
-            p2 = pos + QPointF(-math.cos(ang - 0.4) * tamanho, -math.sin(ang - 0.4) * tamanho)
+            p1 = pos + QPointF(
+                -math.cos(ang + 0.4) * tamanho, -math.sin(ang + 0.4) * tamanho
+            )
+            p2 = pos + QPointF(
+                -math.cos(ang - 0.4) * tamanho, -math.sin(ang - 0.4) * tamanho
+            )
             linha1 = QGraphicsLineItem(QLineF(pos, p1))
             linha2 = QGraphicsLineItem(QLineF(pos, p2))
             linha1.setPen(QPen(cor, 1.5))
@@ -2153,19 +2267,22 @@ def criar_extremidade(pos, direcao, estilo, tamanho=12, cor=Qt.black, tipo="fech
             return grupo
 
     elif estilo == "Círculo":
-        item = QGraphicsEllipseItem(pos.x() - tamanho/2, pos.y() - tamanho/2, tamanho, tamanho)
+        item = QGraphicsEllipseItem(
+            pos.x() - tamanho / 2, pos.y() - tamanho / 2, tamanho, tamanho
+        )
         item.setPen(QPen(cor))
         item.setBrush(QBrush(cor))
         return item
 
     elif estilo == "Quadrado":
-        item = QGraphicsRectItem(pos.x() - tamanho/2, pos.y() - tamanho/2, tamanho, tamanho)
+        item = QGraphicsRectItem(
+            pos.x() - tamanho / 2, pos.y() - tamanho / 2, tamanho, tamanho
+        )
         item.setPen(QPen(cor))
         item.setBrush(QBrush(cor))
         return item
 
     return None
-
 
 
 def criar_seta(pos, direcao, tamanho=8):
@@ -2177,4 +2294,3 @@ def criar_seta(pos, direcao, tamanho=8):
     item.setBrush(QBrush(Qt.black))
     item.setPen(QPen(Qt.black))
     return item
-

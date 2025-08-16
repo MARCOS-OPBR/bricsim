@@ -1,13 +1,22 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication,QGraphicsTextItem, QVBoxLayout, QWidget, QHBoxLayout, QStatusBar
+import sip
+from canvas import SvgCanvas, SvgObjectItem
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon, QColor, QPixmap
-
+from PyQt5.QtGui import QColor, QIcon, QPixmap
+from PyQt5.QtWidgets import (
+    QApplication,
+    QGraphicsTextItem,
+    QHBoxLayout,
+    QMainWindow,
+    QStatusBar,
+    QVBoxLayout,
+    QWidget,
+)
 from ribbon import Ribbon
-from canvas import SvgCanvas,SvgObjectItem
 from sidebar import Sidebar
 from toolbar_status import StatusBar
-import sip
+
 # from shortcuts import configurar_atalhos
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -25,12 +34,13 @@ class MainWindow(QMainWindow):
         self.custom_status_widget = StatusBar()
         self.status_bar.addPermanentWidget(self.custom_status_widget, stretch=1)
         self.canvas.mode_changed.connect(self.ribbon.atualizar_estilo_visual)
-        self.canvas.texto_selecionado.connect(self.ribbon.atualizar_estilo_texto_selecionado)
+        self.canvas.texto_selecionado.connect(
+            self.ribbon.atualizar_estilo_texto_selecionado
+        )
         self.documento_modificado = False
 
-
         self._init_ui()
-        #configurar_atalhos(self, self.canvas)
+        # configurar_atalhos(self, self.canvas)
 
     def _init_ui(self):
         central_widget = QWidget()
@@ -91,8 +101,6 @@ class MainWindow(QMainWindow):
                 self.ribbon.atualizar_estilo_visual("linha")
                 return
 
-
-
         self.ribbon.atualizar_estilo_visual(None)
 
     def keyPressEvent(self, event):
@@ -103,18 +111,21 @@ class MainWindow(QMainWindow):
             self.canvas.scene.clearSelection()
             self.canvas.scene.clearFocus()
             self.canvas.clearFocus()
-            self.canvas.set_mode("selecionar")  
+            self.canvas.set_mode("selecionar")
             return
 
         super().keyPressEvent(event)
 
+
 if __name__ == "__main__":
     import sys
+
     from splash import SplashScreen
 
     app = QApplication(sys.argv)
 
-    splash = SplashScreen("Logo.PNG")  
+    splash = SplashScreen("Logo.PNG")
+
     def abrir_janela_principal():
         window = MainWindow()
         window.show()

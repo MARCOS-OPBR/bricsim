@@ -6,6 +6,8 @@ exclude =
     simulator/ui,
     design/objects,
     simulator/objects,
+    BRICSIM_Simulator,
+    BRICSSIM_Designer,
     build,
     dist,
     .venv,

@@ -1,20 +1,31 @@
 import sys
+
+from PyQt5.QtCore import QPointF, Qt, QTimer
+from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout,
-    QFrame, QMenu, QAction, QDialog, QLineEdit, QPushButton,QMessageBox
+    QAction,
+    QApplication,
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt5.QtCore import Qt, QPointF, QTimer
-from PyQt5.QtGui import QFont, QPainter, QColor, QPolygonF, QPen
-
 from singleton import VariaveisGlobais
-
 
 # ------------------------------
 # Utilitários visuais
 # ------------------------------
 
+
 class ValueInputDialog(QDialog):
     """Janela para entrada de valores numéricos (campo preto, texto verde)."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Alterar valor")
@@ -46,6 +57,7 @@ class ValueInputDialog(QDialog):
 
 class LampWidget(QWidget):
     """Lâmpada de estado para variáveis digitais."""
+
     def __init__(self, diameter=26):
         super().__init__()
         self.state = None  # None=indef, False=OFF, True=ON
@@ -78,6 +90,7 @@ class LampWidget(QWidget):
 
 class LevelIndicator(QWidget):
     """Indicador vertical com barra PV, SP e MV (analógico)."""
+
     def __init__(self, pv=30, sp=60, mv=40, mlo=None, mhi=None):
         super().__init__()
         self.pv = pv
@@ -111,22 +124,26 @@ class LevelIndicator(QWidget):
 
         # SP seta amarela à esquerda
         sp_y = percent_to_y(self.sp)
-        sp_triangle = QPolygonF([
-            QPointF(bar_x - 8, sp_y - 5),
-            QPointF(bar_x, sp_y),
-            QPointF(bar_x - 8, sp_y + 5)
-        ])
+        sp_triangle = QPolygonF(
+            [
+                QPointF(bar_x - 8, sp_y - 5),
+                QPointF(bar_x, sp_y),
+                QPointF(bar_x - 8, sp_y + 5),
+            ]
+        )
         painter.setBrush(QColor("yellow"))
         painter.setPen(Qt.NoPen)
         painter.drawPolygon(sp_triangle)
 
         # MV seta vermelha à direita
         mv_y = percent_to_y(self.mv)
-        mv_triangle = QPolygonF([
-            QPointF(bar_x + bar_width + 8, mv_y - 5),
-            QPointF(bar_x + bar_width, mv_y),
-            QPointF(bar_x + bar_width + 8, mv_y + 5)
-        ])
+        mv_triangle = QPolygonF(
+            [
+                QPointF(bar_x + bar_width + 8, mv_y - 5),
+                QPointF(bar_x + bar_width, mv_y),
+                QPointF(bar_x + bar_width + 8, mv_y + 5),
+            ]
+        )
         painter.setBrush(QColor("red"))
         painter.drawPolygon(mv_triangle)
 
@@ -157,8 +174,10 @@ class LevelIndicator(QWidget):
 # Faceplate base
 # ------------------------------
 
+
 class BaseFaceplate(QWidget):
     """Base comum para faceplates, com cabeçalho e modo."""
+
     def __init__(self, tag_name: str):
         super().__init__()
         self.tag_name = tag_name
@@ -235,6 +254,7 @@ class BaseFaceplate(QWidget):
 # Faceplate ANALÓGICO
 # ------------------------------
 
+
 class AnalogFaceplate(BaseFaceplate):
     def __init__(self, tag_name="P1001"):
         super().__init__(tag_name)
@@ -307,11 +327,13 @@ class AnalogFaceplate(BaseFaceplate):
 # Faceplate DIGITAL (novo)
 # ------------------------------
 
+
 # =========================
 # Faceplate DIGITAL (mínimo)
 # =========================
 class DigitalFaceplate(QWidget):
     """ON/OFF com lâmpada e botões; respeita MAN/AUT."""
+
     def __init__(self, tag_name="DI001"):
         super().__init__()
         self.tag_name = tag_name
@@ -321,18 +343,23 @@ class DigitalFaceplate(QWidget):
         self.resize(220, 300)
         self.setStyleSheet("background-color:#FFFDEB;")
 
-        lay = QVBoxLayout(self); lay.setContentsMargins(6,6,6,6); lay.setSpacing(6)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(6, 6, 6, 6)
+        lay.setSpacing(6)
 
-        head = QLabel(self.tag_name); head.setAlignment(Qt.AlignCenter)
+        head = QLabel(self.tag_name)
+        head.setAlignment(Qt.AlignCenter)
         head.setStyleSheet("background:#00AEEF; color:black; padding:4px;")
         head.setFont(QFont("Arial", 10, QFont.Bold))
         lay.addWidget(head)
 
         # PV + Modo
         row_pv = QHBoxLayout()
-        self.lbl_pv = QLabel("PV: ?"); self.lbl_pv.setStyleSheet("color:#0F0; background:black; padding:6px;")
+        self.lbl_pv = QLabel("PV: ?")
+        self.lbl_pv.setStyleSheet("color:#0F0; background:black; padding:6px;")
         row_pv.addWidget(self.lbl_pv, 1)
-        self.lbl_mode = QLabel(self.mode); self.lbl_mode.setStyleSheet("color:#0F0; background:black; padding:6px;")
+        self.lbl_mode = QLabel(self.mode)
+        self.lbl_mode.setStyleSheet("color:#0F0; background:black; padding:6px;")
         self.lbl_mode.setAlignment(Qt.AlignCenter)
         self.lbl_mode.mousePressEvent = self._menu_modo
         row_pv.addWidget(self.lbl_mode)
@@ -340,22 +367,28 @@ class DigitalFaceplate(QWidget):
 
         # SP (AUT)
         row_sp = QHBoxLayout()
-        self.lbl_sp = QLabel("SP: ?"); self.lbl_sp.setStyleSheet("color:#0F0; background:black; padding:6px;")
+        self.lbl_sp = QLabel("SP: ?")
+        self.lbl_sp.setStyleSheet("color:#0F0; background:black; padding:6px;")
         row_sp.addWidget(self.lbl_sp, 1)
-        self.bt_sp_on = QPushButton("SP ON"); self.bt_sp_off = QPushButton("SP OFF")
+        self.bt_sp_on = QPushButton("SP ON")
+        self.bt_sp_off = QPushButton("SP OFF")
         self.bt_sp_on.clicked.connect(lambda: self._write("sp", True))
         self.bt_sp_off.clicked.connect(lambda: self._write("sp", False))
-        row_sp.addWidget(self.bt_sp_on); row_sp.addWidget(self.bt_sp_off)
+        row_sp.addWidget(self.bt_sp_on)
+        row_sp.addWidget(self.bt_sp_off)
         lay.addLayout(row_sp)
 
         # MV (MAN)
         row_mv = QHBoxLayout()
-        self.lbl_mv = QLabel("MV: ?"); self.lbl_mv.setStyleSheet("color:#0F0; background:black; padding:6px;")
+        self.lbl_mv = QLabel("MV: ?")
+        self.lbl_mv.setStyleSheet("color:#0F0; background:black; padding:6px;")
         row_mv.addWidget(self.lbl_mv, 1)
-        self.bt_mv_on = QPushButton("MV ON"); self.bt_mv_off = QPushButton("MV OFF")
+        self.bt_mv_on = QPushButton("MV ON")
+        self.bt_mv_off = QPushButton("MV OFF")
         self.bt_mv_on.clicked.connect(lambda: self._write("mv", True))
         self.bt_mv_off.clicked.connect(lambda: self._write("mv", False))
-        row_mv.addWidget(self.bt_mv_on); row_mv.addWidget(self.bt_mv_off)
+        row_mv.addWidget(self.bt_mv_on)
+        row_mv.addWidget(self.bt_mv_off)
         lay.addLayout(row_mv)
 
         self._timer = QTimer(self)
@@ -364,10 +397,12 @@ class DigitalFaceplate(QWidget):
         self._tick()
 
     def _menu_modo(self, ev):
-        from PyQt5.QtWidgets import QMenu, QAction, QMessageBox
+        from PyQt5.QtWidgets import QAction, QMenu, QMessageBox
+
         menu = QMenu(self)
-        for m in ["MAN","AUT","CAS","PRD"]:
-            ac = QAction(m, self); ac.triggered.connect(lambda chk, mm=m: self._set_mode(mm))
+        for m in ["MAN", "AUT", "CAS", "PRD"]:
+            ac = QAction(m, self)
+            ac.triggered.connect(lambda chk, mm=m: self._set_mode(mm))
             menu.addAction(ac)
         menu.exec_(ev.globalPos())
 
@@ -376,8 +411,12 @@ class DigitalFaceplate(QWidget):
             ctrl = self.vg.get(f"{self.tag_name}.controle", {})
             if not ctrl.get("fonte_cascata"):
                 from PyQt5.QtWidgets import QMessageBox
-                QMessageBox.warning(self, "Modo indisponível",
-                                    f"Sem 'fonte_cascata' em {self.tag_name}.")
+
+                QMessageBox.warning(
+                    self,
+                    "Modo indisponível",
+                    f"Sem 'fonte_cascata' em {self.tag_name}.",
+                )
                 return
         self.mode = mode
         self.lbl_mode.setText(mode)
@@ -385,13 +424,16 @@ class DigitalFaceplate(QWidget):
         self._tick()
 
     def _write(self, field, val):
-        if field == "sp" and self.mode != "AUT": return
-        if field == "mv" and self.mode != "MAN": return
+        if field == "sp" and self.mode != "AUT":
+            return
+        if field == "mv" and self.mode != "MAN":
+            return
         self.vg.set(f"{self.tag_name}.{field}", 1 if val else 0)
 
     def _b(self, key, default=0):
         v = self.vg.get(key, default)
-        if isinstance(v, str) and v.isdigit(): v = int(v)
+        if isinstance(v, str) and v.isdigit():
+            v = int(v)
         return bool(v)
 
     def _tick(self):
@@ -401,15 +443,22 @@ class DigitalFaceplate(QWidget):
         self.lbl_pv.setText("PV: ON" if pv else "PV: OFF")
         self.lbl_sp.setText("SP: ON" if sp else "SP: OFF")
         self.lbl_mv.setText("MV: ON" if mv else "MV: OFF")
-        man = (self.mode == "MAN"); aut = (self.mode == "AUT")
-        self.bt_mv_on.setEnabled(man); self.bt_mv_off.setEnabled(man)
-        self.bt_sp_on.setEnabled(aut); self.bt_sp_off.setEnabled(aut)
+        man = self.mode == "MAN"
+        aut = self.mode == "AUT"
+        self.bt_mv_on.setEnabled(man)
+        self.bt_mv_off.setEnabled(man)
+        self.bt_sp_on.setEnabled(aut)
+        self.bt_sp_off.setEnabled(aut)
 
 
 # =========================
 # Faceplate DIGITAL (status PV0..PV5)
 # =========================
-from PyQt5.QtWidgets import QTabWidget, QPlainTextEdit  # (garante imports básicos já existentes)
+from PyQt5.QtWidgets import (  # (garante imports básicos já existentes)
+    QPlainTextEdit,
+    QTabWidget,
+)
+
 
 class DigitalStatusFaceplate(QWidget):
     """
@@ -436,6 +485,7 @@ class DigitalStatusFaceplate(QWidget):
     Valores lidos/escritos em:
       vg[f"{tag}.PV{i}"] ∈ {0,1}
     """
+
     def __init__(self, tag_name="DI001"):
         super().__init__()
         self._flash_active = set()  # índices de PV piscando por 1s
@@ -446,20 +496,25 @@ class DigitalStatusFaceplate(QWidget):
         self.resize(230, 520)
         self.setStyleSheet("background:#FFFDEB;")
 
-        root = QVBoxLayout(self); root.setContentsMargins(6, 6, 6, 6); root.setSpacing(6)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(6, 6, 6, 6)
+        root.setSpacing(6)
 
         # Cabeçalho azul
         head = QLabel(self.tag_name)
         head.setAlignment(Qt.AlignCenter)
-        head.setStyleSheet("background:#00AEEF; color:black; padding:6px; font-weight:600;")
+        head.setStyleSheet(
+            "background:#00AEEF; color:black; padding:6px; font-weight:600;"
+        )
         head.setFont(QFont("Arial", 10))
         root.addWidget(head)
-       
-
 
         # Painel preto
-        panel = QFrame(); panel.setStyleSheet("background:black; border:1px solid #111;")
-        v = QVBoxLayout(panel); v.setContentsMargins(20, 18, 20, 18); v.setSpacing(18)
+        panel = QFrame()
+        panel.setStyleSheet("background:black; border:1px solid #111;")
+        v = QVBoxLayout(panel)
+        v.setContentsMargins(20, 18, 20, 18)
+        v.setSpacing(18)
         root.addWidget(panel, 1)
 
         # Preparar 6 “cards” creme
@@ -477,7 +532,9 @@ class DigitalStatusFaceplate(QWidget):
             self.rows.append(btn)
 
         # Timer de atualização
-        self._t = QTimer(self); self._t.timeout.connect(self._tick); self._t.start(300)
+        self._t = QTimer(self)
+        self._t.timeout.connect(self._tick)
+        self._t.start(300)
         self._tick()
 
     # ----- helpers -----
@@ -491,22 +548,24 @@ class DigitalStatusFaceplate(QWidget):
             key = f"PV{i}"
             if key not in m:
                 m[key] = {"text0": f"PV{i}", "text1": f"PV{i}", "visible": False}
-            m[key].setdefault("pulse", True if i in (0,1) else False)
+            m[key].setdefault("pulse", True if i in (0, 1) else False)
             m[key].setdefault("confirm", False)
         return m
 
     def _bget(self, key, default=0):
         v = self.vg.get(key, default)
-        if isinstance(v, str) and v.isdigit(): v = int(v)
+        if isinstance(v, str) and v.isdigit():
+            v = int(v)
         return 1 if bool(v) else 0
 
     def _pulse(self, key, ms=800):
         self.vg.set(key, 1)
         QTimer.singleShot(ms, lambda: self.vg.set(key, 0))
-        
+
     def _confirm(self, msg: str) -> bool:
-        ans = QMessageBox.question(self, "Confirmação", msg,
-                                QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        ans = QMessageBox.question(
+            self, "Confirmação", msg, QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
         return ans == QMessageBox.Yes
 
     def _toggle(self, i):
@@ -541,15 +600,12 @@ class DigitalStatusFaceplate(QWidget):
             self.vg.set(f"{tag}.PV{i}", novo)
             self._flash(i, 300)
 
-
-
-
-
-
     def _tick(self):
         m = self._get_map()
         for i, btn in enumerate(self.rows):
-            cfg = m.get(f"PV{i}", {"text0": f"PV{i}", "text1": f"PV{i}", "visible": False})
+            cfg = m.get(
+                f"PV{i}", {"text0": f"PV{i}", "text1": f"PV{i}", "visible": False}
+            )
             visible = bool(cfg.get("visible", False))
             btn.setVisible(visible)
             if not visible:
@@ -562,28 +618,29 @@ class DigitalStatusFaceplate(QWidget):
             text1 = cfg.get("text1", text0 or f"PV{i}")
             btn.setText(text1 if val else text0)
             # Cores padrão (ou as do seu map color0/color1, se já usa)
-            bg0 = (cfg.get("color0") or "#FFF8E1")
-            bg1 = (cfg.get("color1") or "#E8FFE8")
-            fg0 = "#666"; br0 = "1px solid #DDD"
-            fg1 = "#0A0"; br1 = "2px solid #0A0"
+            bg0 = cfg.get("color0") or "#FFF8E1"
+            bg1 = cfg.get("color1") or "#E8FFE8"
+            fg0 = "#666"
+            br0 = "1px solid #DDD"
+            fg1 = "#0A0"
+            br1 = "2px solid #0A0"
 
             # Estilos normais por valor
-            style_on  = f"QPushButton{{background:{bg1}; color:{fg1}; border:{br1}; border-radius:6px; font-weight:600; padding:6px;}}"
+            style_on = f"QPushButton{{background:{bg1}; color:{fg1}; border:{br1}; border-radius:6px; font-weight:600; padding:6px;}}"
             style_off = f"QPushButton{{background:{bg0}; color:{fg0}; border:{br0}; border-radius:6px; padding:6px;}}"
-            pressed   = "QPushButton:pressed{opacity:0.95;}"
+            pressed = "QPushButton:pressed{opacity:0.95;}"
 
             # --- FLASH de 1s tem prioridade visual ---
             if i in getattr(self, "_flash_active", set()):
                 # cores de flash (pode personalizar)
-                flash_on  = "#C8E6C9"   # verde claro (Ligar)
-                flash_off = "#FFCDD2"   # vermelho claro (Desligar)
-                flash_bg  = flash_on if i == 0 else flash_off
-                btn.setStyleSheet(f"QPushButton{{background:{flash_bg}; color:#000; border:2px solid #666; border-radius:6px; padding:6px;}}{pressed}")
+                flash_on = "#C8E6C9"  # verde claro (Ligar)
+                flash_off = "#FFCDD2"  # vermelho claro (Desligar)
+                flash_bg = flash_on if i == 0 else flash_off
+                btn.setStyleSheet(
+                    f"QPushButton{{background:{flash_bg}; color:#000; border:2px solid #666; border-radius:6px; padding:6px;}}{pressed}"
+                )
             else:
                 btn.setStyleSheet((style_on if val else style_off) + pressed)
-
-           
-
 
 
 # =========================
@@ -599,16 +656,17 @@ def open_faceplate(tag_name: str) -> QWidget:
                 f"{tag_name}.digi.map",
                 {
                     "PV0": {"text0": "DESLIGADO", "text1": "LIGADO", "visible": True},
-                    "PV1": {"text0": "",          "text1": "ALARME", "visible": False},
-                    "PV2": {"text0": "MANUAL",    "text1": "AUTOMÁTICO", "visible": False},
-                    "PV3": {"text0": "CAMPO",     "text1": "CCI", "visible": False},
-                    "PV4": {"text0": "PV4",       "text1": "PV4", "visible": False},
-                    "PV5": {"text0": "PV5",       "text1": "PV5", "visible": False},
-                }
+                    "PV1": {"text0": "", "text1": "ALARME", "visible": False},
+                    "PV2": {"text0": "MANUAL", "text1": "AUTOMÁTICO", "visible": False},
+                    "PV3": {"text0": "CAMPO", "text1": "CCI", "visible": False},
+                    "PV4": {"text0": "PV4", "text1": "PV4", "visible": False},
+                    "PV5": {"text0": "PV5", "text1": "PV5", "visible": False},
+                },
             )
         return DigitalStatusFaceplate(tag_name)
     # analógico padrão já existente
     return AnalogFaceplate(tag_name)
+
 
 # ------------------------------
 # Execução direta p/ teste rápido

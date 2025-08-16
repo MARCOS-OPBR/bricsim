@@ -1,4 +1,13 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QLabel, QListWidget, QTextEdit, QSizePolicy
+from PyQt5.QtWidgets import (
+    QGroupBox,
+    QLabel,
+    QListWidget,
+    QSizePolicy,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
 
 class Sidebar(QWidget):
     def __init__(self, parent=None):
@@ -12,14 +21,14 @@ class Sidebar(QWidget):
         self.biblioteca_box = QGroupBox("Biblioteca")
         biblioteca_layout = QVBoxLayout()
         biblioteca_layout.addWidget(QLabel("ISA 5.1"))  # Placeholder
-        biblioteca_layout.addWidget(QListWidget())       # Futuro: lista de símbolos
+        biblioteca_layout.addWidget(QListWidget())  # Futuro: lista de símbolos
         self.biblioteca_box.setLayout(biblioteca_layout)
 
         # 🔹 Parte 2: Árvore de Navegação
         self.arvore_box = QGroupBox("Navegação")
         arvore_layout = QVBoxLayout()
         arvore_layout.addWidget(QLabel("Tela atual: Forno L-2B"))  # Placeholder
-        arvore_layout.addWidget(QTextEdit())                       # Futuro: QTreeView
+        arvore_layout.addWidget(QTextEdit())  # Futuro: QTreeView
         self.arvore_box.setLayout(arvore_layout)
 
         # Adiciona os dois quadros ao layout principal

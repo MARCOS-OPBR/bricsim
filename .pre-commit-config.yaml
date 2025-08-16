@@ -21,12 +21,25 @@
     hooks:
       - id: isort
 
+  # Flake8 crítico (só erros sérios)
   - repo: https://github.com/pycqa/flake8
     rev: 7.1.1
     hooks:
       - id: flake8
+        name: flake8 (critical)
+        args: ["--select=E9,F63,F7,F82"]
+        additional_dependencies: []
 
-# NÃO tocar nessas árvores nesta fase:
+  # Flake8 completo (manual)
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+        name: flake8 (full)
+        stages: [manual]
+        additional_dependencies: []
+
+# NÃO tocar nessas árvores nesta fase (incluí as legadas):
 exclude: |
-  ^(design/ui/|simulator/ui/|design/objects/|simulator/objects/)|
+  ^(design/ui/|simulator/ui/|design/objects/|simulator/objects/|BRICSIM_Simulator/|BRICSSIM_Designer/)|
   ^build/|^dist/|^.venv/|^venv/|^\.git/|__pycache__

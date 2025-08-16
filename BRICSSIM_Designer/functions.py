@@ -1,15 +1,46 @@
 # functions.py (DESIGN)
+from canvas import (
+    EditableLine,
+    EditablePolyline,
+    EditableTextItem,
+    EditableVariable,
+    SvgObjectItem,
+)
+from PyQt5.QtCore import QPointF, QRectF, Qt
+from PyQt5.QtGui import (
+    QBrush,
+    QColor,
+    QFont,
+    QImage,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap,
+    QTransform,
+)
+from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
 from PyQt5.QtWidgets import (
-    QDialog, QLabel, QLineEdit, QComboBox, QPushButton, QColorDialog,
-    QVBoxLayout, QCheckBox, QDialogButtonBox, QGraphicsRectItem,QGraphicsTextItem, QFileDialog,QMessageBox, QGraphicsPixmapItem
-    , QInputDialog,QGraphicsPathItem,QGraphicsItem,QGraphicsItemGroup,QDoubleSpinBox)
-
-from PyQt5.QtGui import QColor, QPen,QBrush,QFont, QPainter, QImage,QTransform
-from PyQt5.QtCore import Qt,QPointF, QRectF
-from PyQt5.QtGui import QPen,QPixmap, QTransform,QPainterPath,QPen, QBrush, QColor
-from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
-from canvas import EditableLine, EditableTextItem,SvgObjectItem,EditablePolyline, EditableVariable
-from svg.path import parse_path, Line, CubicBezier, QuadraticBezier, Arc
+    QCheckBox,
+    QColorDialog,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QGraphicsItem,
+    QGraphicsItemGroup,
+    QGraphicsPathItem,
+    QGraphicsPixmapItem,
+    QGraphicsRectItem,
+    QGraphicsTextItem,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
+from svg.path import Arc, CubicBezier, Line, QuadraticBezier, parse_path
 
 
 class NovoDocumentoDialog(QDialog):
@@ -53,7 +84,9 @@ class NovoDocumentoDialog(QDialog):
             self.cor_selecionada = cor
             self.cor_fundo.setStyleSheet(f"background-color: " + cor.name())
 
+
 # ✅ Função fora da classe — isso que o Ribbon vai importar
+
 
 def abrir_novo_documento(main_window):
     dialog = NovoDocumentoDialog(main_window)
@@ -82,6 +115,7 @@ def abrir_novo_documento(main_window):
             from PyQt5.QtWidgets import QColorDialog
     main_window.canvas.set_grid_visible(grade)  # usa a checkbox "Exibir grade"
 
+
 def alternar_handles(main_window, visivel: bool):
     scene = main_window.canvas.scene
 
@@ -92,24 +126,37 @@ def alternar_handles(main_window, visivel: bool):
             item.handle_end.setVisible(visivel)
 
 
-
-
-def aplicar_formatacao_texto(main_window, fonte=None, tamanho=None, negrito=None, italico=None, sublinhado=None, cor=None):
+def aplicar_formatacao_texto(
+    main_window,
+    fonte=None,
+    tamanho=None,
+    negrito=None,
+    italico=None,
+    sublinhado=None,
+    cor=None,
+):
     scene = main_window.canvas.scene
     for item in scene.selectedItems():
         if isinstance(item, QGraphicsTextItem):
             font = item.font()
-            if fonte: font.setFamily(fonte)
-            if tamanho: font.setPointSize(tamanho)
-            if negrito is not None: font.setBold(negrito)
-            if italico is not None: font.setItalic(italico)
-            if sublinhado is not None: font.setUnderline(sublinhado)
+            if fonte:
+                font.setFamily(fonte)
+            if tamanho:
+                font.setPointSize(tamanho)
+            if negrito is not None:
+                font.setBold(negrito)
+            if italico is not None:
+                font.setItalic(italico)
+            if sublinhado is not None:
+                font.setUnderline(sublinhado)
             item.setFont(font)
-            if cor: item.setDefaultTextColor(cor)
+            if cor:
+                item.setDefaultTextColor(cor)
 
 
 def ativar_desenho_linha(main_window):
     main_window.canvas.set_mode("linha")
+
 
 def ativar_desenho_texto(main_window):
     if hasattr(main_window, "canvas"):
@@ -117,9 +164,17 @@ def ativar_desenho_texto(main_window):
 
     if hasattr(main_window, "ribbon"):
         main_window.ribbon.atualizar_estilo_visual("texto")
-        
 
-def aplicar_formatacao_texto(main_window, fonte=None, tamanho=None, negrito=None, italico=None, sublinhado=None, cor=None):
+
+def aplicar_formatacao_texto(
+    main_window,
+    fonte=None,
+    tamanho=None,
+    negrito=None,
+    italico=None,
+    sublinhado=None,
+    cor=None,
+):
     canvas = main_window.canvas
     for item in canvas.scene.selectedItems():
         if isinstance(item, QGraphicsTextItem):
@@ -141,12 +196,18 @@ def aplicar_formatacao_texto(main_window, fonte=None, tamanho=None, negrito=None
             if cor:
                 item.setDefaultTextColor(cor)
 
+
 def ativar_modo_selecionar(main_window):
     main_window.canvas.set_mode("selecionar")
 
+
 import json
+
+
 def salvar_projeto(main_window):
-    path, _ = QFileDialog.getSaveFileName(main_window, "Salvar Projeto", "", "Projeto BRICSim (*.tbr)")
+    path, _ = QFileDialog.getSaveFileName(
+        main_window, "Salvar Projeto", "", "Projeto BRICSim (*.tbr)"
+    )
     if not path:
         return
     # Encontra o item da área útil com zValue -10
@@ -157,11 +218,13 @@ def salvar_projeto(main_window):
     else:
         cor_fundo = "#ff00ff"
 
-
     data = {
-        "canvas_size": [main_window.canvas.area_largura, main_window.canvas.area_altura],
+        "canvas_size": [
+            main_window.canvas.area_largura,
+            main_window.canvas.area_altura,
+        ],
         "items": [],
-        "cor_fundo": cor_fundo
+        "cor_fundo": cor_fundo,
     }
     id_map = {}  # salva objetos com ID
 
@@ -181,22 +244,24 @@ def salvar_projeto(main_window):
 
         elif isinstance(item, EditableTextItem):
             font = item.font()
-            data["items"].append({
-                "type": "text",
-                "x": item.pos().x(),
-                "y": item.pos().y(),
-                "content": item.toPlainText(),
-                "font": font.family(),
-                "size": font.pointSize(),
-                "bold": font.bold(),
-                "italic": font.italic(),
-                "underline": font.underline(),
-                "color": item.defaultTextColor().name(),
-                "z": item.zValue(),
-                "scale_x": item.transform().m11(),
-                "scale_y": item.transform().m22(),
-                "id": obj_id 
-            })
+            data["items"].append(
+                {
+                    "type": "text",
+                    "x": item.pos().x(),
+                    "y": item.pos().y(),
+                    "content": item.toPlainText(),
+                    "font": font.family(),
+                    "size": font.pointSize(),
+                    "bold": font.bold(),
+                    "italic": font.italic(),
+                    "underline": font.underline(),
+                    "color": item.defaultTextColor().name(),
+                    "z": item.zValue(),
+                    "scale_x": item.transform().m11(),
+                    "scale_y": item.transform().m22(),
+                    "id": obj_id,
+                }
+            )
             id_map[obj_id] = item
 
         elif isinstance(item, SvgObjectItem):
@@ -208,43 +273,51 @@ def salvar_projeto(main_window):
                         continue
                     stroke = child.pen().color().name()
                     stroke_width = child.pen().widthF()
-                    fill = child.brush().color().name() if child.brush().style() != Qt.NoBrush else "none"
+                    fill = (
+                        child.brush().color().name()
+                        if child.brush().style() != Qt.NoBrush
+                        else "none"
+                    )
 
-                    d_paths.append({
-                        "d": d,
-                        "stroke": stroke,
-                        "stroke_width": stroke_width,
-                        "fill": fill
-                        
-                    })
+                    d_paths.append(
+                        {
+                            "d": d,
+                            "stroke": stroke,
+                            "stroke_width": stroke_width,
+                            "fill": fill,
+                        }
+                    )
 
-            data["items"].append({
-                "type": "svg",
-                "tag": item.data(0),
-                "paths": d_paths,
-                "x": item.pos().x(),
-                "y": item.pos().y(),
-                "z": item.zValue(),
-                "scale_x": item.transform().m11(),
-                "scale_y": item.transform().m22(),
-                "rotation": item.rotation(),
-                "shear_x": item.transform().m12(),
-                "shear_y": item.transform().m21(),
-                "id": obj_id 
-            })
+            data["items"].append(
+                {
+                    "type": "svg",
+                    "tag": item.data(0),
+                    "paths": d_paths,
+                    "x": item.pos().x(),
+                    "y": item.pos().y(),
+                    "z": item.zValue(),
+                    "scale_x": item.transform().m11(),
+                    "scale_y": item.transform().m22(),
+                    "rotation": item.rotation(),
+                    "shear_x": item.transform().m12(),
+                    "shear_y": item.transform().m21(),
+                    "id": obj_id,
+                }
+            )
             id_map[obj_id] = item
 
-            
         elif isinstance(item, QGraphicsItemGroup):
             filhos_ids = [id(child) for child in item.childItems()]
-            data["items"].append({
-                "type": "grupo",
-                "filhos_ids": filhos_ids,
-                "z": item.zValue(),
-                "x": item.pos().x(),
-                "y": item.pos().y(),
-                "id": obj_id
-            })
+            data["items"].append(
+                {
+                    "type": "grupo",
+                    "filhos_ids": filhos_ids,
+                    "z": item.zValue(),
+                    "x": item.pos().x(),
+                    "y": item.pos().y(),
+                    "id": obj_id,
+                }
+            )
             id_map[obj_id] = item
 
     with open(path, "w", encoding="utf-8") as f:
@@ -256,7 +329,9 @@ def salvar_projeto(main_window):
 
 
 def carregar_projeto(main_window):
-    path, _ = QFileDialog.getOpenFileName(main_window, "Abrir Projeto", "", "Projeto BRICSim (*.tbr *mbr)")
+    path, _ = QFileDialog.getOpenFileName(
+        main_window, "Abrir Projeto", "", "Projeto BRICSim (*.tbr *mbr)"
+    )
     if not path:
         return
 
@@ -271,17 +346,17 @@ def carregar_projeto(main_window):
 
     id_map = {}
     pendentes = []
-    
+
     for item_data in data["items"]:
         if item_data["type"] == "linha":
-            line=EditableLine.from_dict(item_data)
+            line = EditableLine.from_dict(item_data)
             t = QTransform()
             main_window.canvas.scene.addItem(line)
             id_map[item_data["id"]] = line
 
-            
         elif item_data["type"] == "text":
             from canvas import EditableTextItem
+
             texto = EditableTextItem(item_data["content"])
             texto.setPos(QPointF(item_data.get("x", 0), item_data.get("y", 0)))
             t = QTransform()
@@ -305,6 +380,7 @@ def carregar_projeto(main_window):
 
         elif item_data["type"] == "svg":
             from canvas import SvgObjectItem
+
             svg_item = SvgObjectItem(item_data.get("tag", "SVG"))
             svg_item.setZValue(item_data.get("z", 0))
             svg_item.setPos(QPointF(item_data.get("x", 0), item_data.get("y", 0)))
@@ -345,8 +421,14 @@ def carregar_projeto(main_window):
 
                 path_item = QGraphicsPathItem(qt_path)
                 path_item.setData(1, d)  # reatribui o d original
-                path_item.setPen(QPen(QColor(path_dict["stroke"]), path_dict["stroke_width"]))
-                path_item.setBrush(QBrush(QColor(path_dict["fill"])) if path_dict["fill"] != "none" else QBrush(Qt.transparent))
+                path_item.setPen(
+                    QPen(QColor(path_dict["stroke"]), path_dict["stroke_width"])
+                )
+                path_item.setBrush(
+                    QBrush(QColor(path_dict["fill"]))
+                    if path_dict["fill"] != "none"
+                    else QBrush(Qt.transparent)
+                )
                 svg_item.add_path(path_item)
 
             main_window.canvas.scene.addItem(svg_item)
@@ -365,44 +447,54 @@ def carregar_projeto(main_window):
         for grupo_data in restantes[:]:
             filhos_ok = all(fid in id_map for fid in grupo_data["filhos_ids"])
             if filhos_ok:
-                grupo = main_window.canvas.scene.createItemGroup([id_map[fid] for fid in grupo_data["filhos_ids"]])
+                grupo = main_window.canvas.scene.createItemGroup(
+                    [id_map[fid] for fid in grupo_data["filhos_ids"]]
+                )
                 grupo.setZValue(grupo_data.get("z", 0))
-                grupo.setFlags(QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable)
+                grupo.setFlags(
+                    QGraphicsItem.ItemIsMovable | QGraphicsItem.ItemIsSelectable
+                )
                 grupo.setPos(QPointF(grupo_data.get("x", 0), grupo_data.get("y", 0)))
                 gid = grupo_data.get("id", id(grupo))
                 id_map[gid] = grupo
                 restantes.remove(grupo_data)
                 progresso = True
         if not progresso:
-            print("⚠️ Alguns grupos não puderam ser reconstruídos (ciclo ou falta de dependência)")
+            print(
+                "⚠️ Alguns grupos não puderam ser reconstruídos (ciclo ou falta de dependência)"
+            )
             break
-
 
     main_window.atualizar_titulo(path.split("/")[-1])
 
 
-
-
 def importar_imagem(main_window):
-    caminho, _ = QFileDialog.getOpenFileName(None, "Importar Imagem", "", "Imagens (*.png *.jpg *.bmp *.gif)")
+    caminho, _ = QFileDialog.getOpenFileName(
+        None, "Importar Imagem", "", "Imagens (*.png *.jpg *.bmp *.gif)"
+    )
     if caminho:
         canvas = main_window.canvas
         canvas.imagem_a_importar = caminho
         canvas.set_mode("inserir_imagem")
 
 
-
-
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QDoubleSpinBox, QCheckBox, QDialogButtonBox, QPushButton
-from PyQt5.QtCore import Qt, QPointF
-from PyQt5.QtGui import QTransform, QFont
-from PyQt5.QtWidgets import QMessageBox, QGraphicsTextItem, QGraphicsItemGroup
-
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QDoubleSpinBox, QCheckBox, QDialogButtonBox, QPushButton
-from PyQt5.QtCore import Qt, QPointF
-from PyQt5.QtGui import QTransform, QFont
-from PyQt5.QtWidgets import QMessageBox, QGraphicsTextItem, QGraphicsItemGroup
 import copy
+
+from PyQt5.QtCore import QPointF, Qt
+from PyQt5.QtGui import QFont, QTransform
+from PyQt5.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QGraphicsItemGroup,
+    QGraphicsTextItem,
+    QLabel,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+)
+
 
 def escalar_item_selecionado(main_window):
     scene = main_window.canvas.scene
@@ -416,7 +508,11 @@ def escalar_item_selecionado(main_window):
     for item in itens:
         estado_original[item] = {
             "transform": QTransform(item.transform()),
-            "font_size": item.font().pointSizeF() if isinstance(item, QGraphicsTextItem) else None,
+            "font_size": (
+                item.font().pointSizeF()
+                if isinstance(item, QGraphicsTextItem)
+                else None
+            ),
             "p1": item.handle_start.pos() if hasattr(item, "handle_start") else None,
             "p2": item.handle_end.pos() if hasattr(item, "handle_end") else None,
         }
@@ -447,7 +543,9 @@ def escalar_item_selecionado(main_window):
             self.reset_btn.clicked.connect(self.resetar)
             layout.addWidget(self.reset_btn)
 
-            self.botoes = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            self.botoes = QDialogButtonBox(
+                QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+            )
             layout.addWidget(self.botoes)
             self.setLayout(layout)
 
@@ -481,7 +579,9 @@ def escalar_item_selecionado(main_window):
                 item.handle_start.setPos(estado["p1"])
                 item.handle_end.setPos(estado["p2"])
                 item.update_line()
-            elif isinstance(item, QGraphicsTextItem) and estado["font_size"] is not None:
+            elif (
+                isinstance(item, QGraphicsTextItem) and estado["font_size"] is not None
+            ):
                 fonte = item.font()
                 fonte.setPointSizeF(estado["font_size"])
                 item.setFont(fonte)
@@ -536,7 +636,9 @@ def escalar_item_selecionado(main_window):
 
 
 def exportar_imagem(main_window):
-    caminho, _ = QFileDialog.getSaveFileName(main_window, "Exportar como Imagem", "", "Imagem PNG (*.png)")
+    caminho, _ = QFileDialog.getSaveFileName(
+        main_window, "Exportar como Imagem", "", "Imagem PNG (*.png)"
+    )
     if not caminho:
         return
     if not caminho.endswith(".png"):
@@ -555,7 +657,6 @@ def exportar_imagem(main_window):
     imagem.save(caminho, "PNG")
 
 
-
 def imprimir_imagem(main_window):
     printer = QPrinter(QPrinter.HighResolution)
     printer.setFullPage(True)
@@ -568,16 +669,18 @@ def imprimir_imagem(main_window):
         scene.render(painter, printer.pageRect(), rect)
         painter.end()
 
+
 def ativar_desenho_caminho(main_window):
     if hasattr(main_window, "canvas"):
         main_window.canvas.set_mode("caminho")
+
 
 def alterar_tipo_linha(main_window, estilo):
     estilos = {
         "Contínuo": Qt.SolidLine,
         "Tracejado": Qt.DashLine,
         "Pontilhado": Qt.DotLine,
-        "Traço-Ponto": Qt.DashDotLine
+        "Traço-Ponto": Qt.DashDotLine,
     }
 
     tipo = estilos.get(estilo, Qt.SolidLine)
@@ -596,7 +699,6 @@ def alterar_tipo_linha(main_window, estilo):
 
             pen.setStyle(tipo)
             item.apply_pen(pen)
-
 
 
 def alterar_espessura_contorno(main_window, valor):
@@ -627,6 +729,7 @@ def alterar_cor_contorno(main_window):
             pen = item.pen() if callable(item.pen) else item.pen
             pen.setColor(cor)
             item.apply_pen(pen)
+
 
 def alterar_cor_preenchimento(main_window):
     scene = main_window.canvas.scene

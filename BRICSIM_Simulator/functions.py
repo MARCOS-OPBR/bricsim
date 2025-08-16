@@ -1,21 +1,41 @@
-
 # functions.py (SIMULAÇÃO) — versão com MERGE TBR->MBR e correções de SVG/Text
 import json
 import os
 import sys
-from PyQt5.QtWidgets import QFileDialog
+from copy import deepcopy
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QFont, QTransform
-from copy import deepcopy
+from PyQt5.QtWidgets import QFileDialog
 
 # ---------------- MERGE CONFIG ----------------
 VISUAL_FIELDS = {
-    "content", "bold", "italic", "underline", "size",
-    "stroke", "stroke_width", "stroke-width", "fill",
-    "font", "font_family", "font_size", "text_align",
-    "transform", "rotation", "scale", "x", "y", "w", "h",
-    "shear_x", "shear_y", "items", "d"
+    "content",
+    "bold",
+    "italic",
+    "underline",
+    "size",
+    "stroke",
+    "stroke_width",
+    "stroke-width",
+    "fill",
+    "font",
+    "font_family",
+    "font_size",
+    "text_align",
+    "transform",
+    "rotation",
+    "scale",
+    "x",
+    "y",
+    "w",
+    "h",
+    "shear_x",
+    "shear_y",
+    "items",
+    "d",
 }
+
 
 def _identity_key(obj):
     if isinstance(obj, dict):
@@ -23,6 +43,7 @@ def _identity_key(obj):
             if k in obj:
                 return (k, obj[k])
     return None
+
 
 def deep_merge_preserve_visual(tbr, mbr):
     if isinstance(tbr, dict) and isinstance(mbr, dict):
@@ -59,12 +80,22 @@ def deep_merge_preserve_visual(tbr, mbr):
         return merged_list
     return deepcopy(mbr)
 
+
 # ---------------- Import Designer classes ----------------
-designer_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "BRICSSIM_designer"))
+designer_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "BRICSSIM_designer")
+)
 if designer_path not in sys.path:
     sys.path.append(designer_path)
 
-from canvas import EditableLine, EditablePolyline, EditableVariable, EditableTextItem, SvgObjectItem
+from canvas import (
+    EditableLine,
+    EditablePolyline,
+    EditableTextItem,
+    EditableVariable,
+    SvgObjectItem,
+)
+
 
 # ---------------- Utils ----------------
 def qpath_to_svg_d(qpath):
@@ -78,6 +109,7 @@ def qpath_to_svg_d(qpath):
         else:
             elementos.append(f"L {el.x:.2f} {el.y:.2f}")
     return " ".join(elementos)
+
 
 def _extrair_tela_tbr(canvas, nome_tela):
     tbr = getattr(canvas, "_tbr_full", None)
@@ -101,10 +133,14 @@ def _extrair_tela_tbr(canvas, nome_tela):
         base["cor_fundo"] = tbr["cor_fundo"]
     return base
 
+
 # ---------------- Save/Load ----------------
 def salvar_simulacao(main_window):
     from canvas_simulator import TouchAreaItem
-    caminho, _ = QFileDialog.getSaveFileName(None, "Salvar Simulação", "", "Simulação BRICSSIM (*.sbr)")
+
+    caminho, _ = QFileDialog.getSaveFileName(
+        None, "Salvar Simulação", "", "Simulação BRICSSIM (*.sbr)"
+    )
     if not caminho:
         return
 
@@ -124,9 +160,13 @@ def salvar_simulacao(main_window):
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(projeto, f, ensure_ascii=False, indent=4)
 
+
 def carregar_design(canvas):
     from canvas_simulator import TouchAreaItem
-    caminho, _ = QFileDialog.getOpenFileName(None, "Carregar Design", "", "Tela BRICSSIM (*.tbr)")
+
+    caminho, _ = QFileDialog.getOpenFileName(
+        None, "Carregar Design", "", "Tela BRICSSIM (*.tbr)"
+    )
     if not caminho:
         return
     with open(caminho, "r", encoding="utf-8") as f:
@@ -134,9 +174,13 @@ def carregar_design(canvas):
     canvas._tbr_full = dados  # <<< guarda o TBR no canvas
     _montar_cena(canvas, dados, carregar_valores=False)
 
+
 def salvar_modelo(main_window):
     from canvas_simulator import TouchAreaItem
-    caminho, _ = QFileDialog.getSaveFileName(None, "Salvar Modelo", "", "Modelo BRICSSIM (*.mbr)")
+
+    caminho, _ = QFileDialog.getSaveFileName(
+        None, "Salvar Modelo", "", "Modelo BRICSSIM (*.mbr)"
+    )
     if not caminho:
         return
 
@@ -152,17 +196,24 @@ def salvar_modelo(main_window):
                 "largura": getattr(canvas, "area_largura", 600),
                 "altura": getattr(canvas, "area_altura", 400),
             },
-            "cor_fundo": canvas.cor_fundo.name() if hasattr(canvas, "cor_fundo") else "#ffffff"
+            "cor_fundo": (
+                canvas.cor_fundo.name() if hasattr(canvas, "cor_fundo") else "#ffffff"
+            ),
         }
-        print("SALVAMENTO:Cor de fundo:", getattr(canvas, "cor_fundo", QColor("#ffffff")).name())
+        print(
+            "SALVAMENTO:Cor de fundo:",
+            getattr(canvas, "cor_fundo", QColor("#ffffff")).name(),
+        )
 
         for item in canvas.scene.items():
             if isinstance(item, SvgObjectItem):
                 transform = item.transform()
                 sx = transform.m11()
                 sy = transform.m22()
-                if abs(sx) < 0.01: sx = 1.0
-                if abs(sy) < 0.01: sy = 1.0
+                if abs(sx) < 0.01:
+                    sx = 1.0
+                if abs(sy) < 0.01:
+                    sy = 1.0
 
                 d = {
                     "type": "svg",
@@ -173,7 +224,7 @@ def salvar_modelo(main_window):
                     "scale_x": sx,
                     "scale_y": sy,
                     "rotation": item.rotation(),
-                    "paths": []
+                    "paths": [],
                 }
                 if hasattr(item, "_mods") and isinstance(item._mods, list):
                     d["mods"] = item._mods
@@ -181,11 +232,18 @@ def salvar_modelo(main_window):
                 children = item.childItems()
                 for idx, child in enumerate(children):
                     if hasattr(child, "path"):
-                        stroke = child.pen().color().name() if hasattr(child, "pen") else "#000000"
-                        stroke_width = child.pen().widthF() if hasattr(child, "pen") else 1
+                        stroke = (
+                            child.pen().color().name()
+                            if hasattr(child, "pen")
+                            else "#000000"
+                        )
+                        stroke_width = (
+                            child.pen().widthF() if hasattr(child, "pen") else 1
+                        )
                         fill = (
                             child.brush().color().name()
-                            if hasattr(child, "brush") and child.brush().style() != Qt.NoBrush
+                            if hasattr(child, "brush")
+                            and child.brush().style() != Qt.NoBrush
                             else "none"
                         )
 
@@ -215,17 +273,21 @@ def salvar_modelo(main_window):
                             except Exception:
                                 d_value = ""
                             # Opcional: logar para você rastrear quando acontecer
-                            print("⚠️ Fallback qpath_to_svg_d usado (curvas podem ser perdidas) — tag:", item.data(0))
+                            print(
+                                "⚠️ Fallback qpath_to_svg_d usado (curvas podem ser perdidas) — tag:",
+                                item.data(0),
+                            )
 
-                        d["paths"].append({
-                            "d": d_value,
-                            "stroke": stroke,
-                            "stroke-width": stroke_width,
-                            "fill": fill
-                        })
+                        d["paths"].append(
+                            {
+                                "d": d_value,
+                                "stroke": stroke,
+                                "stroke-width": stroke_width,
+                                "fill": fill,
+                            }
+                        )
 
                 dados["objetos"].append(d)
-
 
             elif isinstance(item, EditableTextItem):
                 f = item.font()
@@ -241,10 +303,10 @@ def salvar_modelo(main_window):
                     "underline": bool(f.underline()),
                     "color": item.defaultTextColor().name(),
                     "scale_x": item.transform().m11(),
-                    "scale_y": item.transform().m22()
+                    "scale_y": item.transform().m22(),
                 }
                 if hasattr(item, "_mods") and isinstance(item._mods, list):
-                    d["mods"] = item._mods                
+                    d["mods"] = item._mods
                 dados["objetos"].append(d)
 
             elif isinstance(item, EditableVariable):
@@ -253,7 +315,9 @@ def salvar_modelo(main_window):
                 d["lei"] = item.lei if item.lei else ""
                 item.controle = getattr(item, "controle", {})
                 d["controle"] = {
-                    "variavel_controlada": item.controle.get("variavel_controlada", False),
+                    "variavel_controlada": item.controle.get(
+                        "variavel_controlada", False
+                    ),
                     "Kp": item.controle.get("Kp", 1.0),
                     "Ki": item.controle.get("Ki", 0.0),
                     "Kd": item.controle.get("Kd", 0.0),
@@ -262,38 +326,48 @@ def salvar_modelo(main_window):
                     "pv_tag": item.controle.get("pv_tag", f"{item.tag}.pv"),
                     "sp_tag": item.controle.get("sp_tag", f"{item.tag}.sp"),
                     "mv_tag": item.controle.get("mv_tag", f"{item.tag}.mv"),
-                    "acao": item.controle.get("acao","direta"),
-                    "mv_write_tag":item.controle.get("mv_write_tag",""),
+                    "acao": item.controle.get("acao", "direta"),
+                    "mv_write_tag": item.controle.get("mv_write_tag", ""),
                     "pv_min": item.controle.get("pv_min", 0.0),
-                    "pv_max": item.controle.get("pv_max", 100.0)
+                    "pv_max": item.controle.get("pv_max", 100.0),
                 }
-                
-                d["alarmes"] = getattr(item, "alarmes", {"HH": None, "H": None, "L": None, "LL": None})
+
+                d["alarmes"] = getattr(
+                    item, "alarmes", {"HH": None, "H": None, "L": None, "LL": None}
+                )
                 # --- DIGITAL: persistir tipo, mapa e bits PV0..PV5 ---
                 from singleton import VariaveisGlobais
+
                 vg = VariaveisGlobais()
-                
+
                 tipo = str(vg.get(f"{item.tag}.tipo", "ANA") or "ANA").upper()
                 d["tipo"] = tipo  # facilita detectar no carregamento
 
                 if tipo.startswith("D"):
-                    bits = {f"PV{i}": int(vg.get(f"{item.tag}.PV{i}", 0) or 0) for i in range(6)}
+                    bits = {
+                        f"PV{i}": int(vg.get(f"{item.tag}.PV{i}", 0) or 0)
+                        for i in range(6)
+                    }
                     d["digital"] = {
                         "map": vg.get(f"{item.tag}.digi.map", {}) or {},
                         "bits": bits,
-                        "hidden_offcanvas": bool(getattr(item, "hidden_offcanvas", False)),
-                        "pulse": int(vg.get(f"{item.tag}.digi.pulse", 1) or 1)  # <<< novo
+                        "hidden_offcanvas": bool(
+                            getattr(item, "hidden_offcanvas", False)
+                        ),
+                        "pulse": int(
+                            vg.get(f"{item.tag}.digi.pulse", 1) or 1
+                        ),  # <<< novo
                     }
                     d["visible"] = False
-                                
+
                 if hasattr(item, "_mods") and isinstance(item._mods, list):
                     d["mods"] = item._mods
                 dados["logicas"] = vg.get("logicas", {}) or {}
                 dados["iq"] = VariaveisGlobais().get("iq", []) or []
                 dados["analog_eq"] = vg.get("analog.eq", []) or []
-                dados["analog_tree"] = vg.get("analog.tree", {"root":[]})
+                dados["analog_tree"] = vg.get("analog.tree", {"root": []})
                 dados["objetos"].append(d)
-                
+
             elif hasattr(item, "to_dict"):
                 try:
                     d = item.to_dict()
@@ -319,9 +393,13 @@ def salvar_modelo(main_window):
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(projeto, f, ensure_ascii=False, indent=4)
 
+
 def carregar_modelo(main_window):
-    from canvas_simulator import TouchAreaItem, SimuladorCanvas
-    caminho, _ = QFileDialog.getOpenFileName(None, "Carregar Modelo", "", "Modelo BRICSSIM (*.mbr)")
+    from canvas_simulator import SimuladorCanvas, TouchAreaItem
+
+    caminho, _ = QFileDialog.getOpenFileName(
+        None, "Carregar Modelo", "", "Modelo BRICSSIM (*.mbr)"
+    )
     if not caminho:
         return
     with open(caminho, "r", encoding="utf-8") as f:
@@ -351,18 +429,23 @@ def carregar_modelo(main_window):
     if main_window.tab_widget.count() > 0:
         main_window.sidebar.setCurrentRow(0)
 
+
 def carregar_simulacao(canvas):
     from canvas_simulator import TouchAreaItem
-    caminho, _ = QFileDialog.getOpenFileName(None, "Carregar Simulação", "", "Simulação BRICSSIM (*.sbr)")
+
+    caminho, _ = QFileDialog.getOpenFileName(
+        None, "Carregar Simulação", "", "Simulação BRICSSIM (*.sbr)"
+    )
     if not caminho:
         return
     with open(caminho, "r", encoding="utf-8") as f:
         dados = json.load(f)
     _montar_cena(canvas, dados, carregar_valores=True)
 
+
 def _montar_cena(canvas, dados, carregar_valores=False):
-    from canvas_simulator import _capturar_baseline
-    from canvas_simulator import TouchAreaItem
+    from canvas_simulator import TouchAreaItem, _capturar_baseline
+
     canvas.scene.clear()
     canvas.variaveis.clear()
     canvas_size = dados.get("canvas_size", [1920, 1080])
@@ -377,7 +460,6 @@ def _montar_cena(canvas, dados, carregar_valores=False):
 
     cor_fundo = QColor(dados.get("cor_fundo", "#a53838"))
     canvas.set_area_util(largura, altura, cor_fundo)
-    
 
     objetos = dados.get("objetos") or dados.get("items", [])
 
@@ -388,8 +470,8 @@ def _montar_cena(canvas, dados, carregar_valores=False):
         if tipo == "linha":
             item = EditableLine.from_dict(obj)
             if hasattr(item, "setFlags"):
-                item.setFlags(item.flags() | item.ItemIsSelectable)   # selecionável
-                item.setFlag(item.ItemIsMovable, False) 
+                item.setFlags(item.flags() | item.ItemIsSelectable)  # selecionável
+                item.setFlag(item.ItemIsMovable, False)
             if hasattr(item, "handle_start"):
                 item.handle_start.setVisible(False)
                 item.handle_start.setFlag(item.handle_start.ItemIsMovable, False)
@@ -417,16 +499,25 @@ def _montar_cena(canvas, dados, carregar_valores=False):
             item = EditableVariable.from_dict(obj)
 
             item.lei = obj.get("lei", "").strip() or ""
-            item.alarmes = obj.get("alarmes", {"HH": float("inf"), "H": float("inf"), "L": float("-inf"), "LL": float("-inf")})
+            item.alarmes = obj.get(
+                "alarmes",
+                {
+                    "HH": float("inf"),
+                    "H": float("inf"),
+                    "L": float("-inf"),
+                    "LL": float("-inf"),
+                },
+            )
             # --- DIGITAL: restaurar atributos e esconder off-canvas ---
             from singleton import VariaveisGlobais
+
             vg = VariaveisGlobais()
             vg.set("iq", dados.get("iq", []) or [])
             if "analog_tree" in dados:
-                vg.set("analog.tree", dados.get("analog_tree", {"root":[]}))
+                vg.set("analog.tree", dados.get("analog_tree", {"root": []}))
             elif vg.get("analog.tree") is None:
-                vg.set("analog.tree", {"root":[]})
-                    
+                vg.set("analog.tree", {"root": []})
+
             tipo_json = str(obj.get("tipo", "")).upper()
             if tipo_json.startswith("D"):
                 vg.set(f"{item.tag}.tipo", "DIG")
@@ -443,7 +534,7 @@ def _montar_cena(canvas, dados, carregar_valores=False):
                 for i in range(6):
                     if f"PV{i}" in bits:
                         vg.set(f"{item.tag}.PV{i}", int(bits[f"PV{i}"]))
-                
+
                 pulse = digital.get("pulse", None)
                 if pulse is not None:
                     vg.set(f"{item.tag}.digi.pulse", 1 if int(pulse or 0) else 0)
@@ -474,7 +565,7 @@ def _montar_cena(canvas, dados, carregar_valores=False):
                 "acao": controle_raw.get("acao", "direta"),
                 "mv_write_tag": controle_raw.get("mv_write_tag", ""),
                 "pv_min": controle_raw.get("pv_min", 0.0),
-                "pv_max": controle_raw.get("pv_max", 100.0)
+                "pv_max": controle_raw.get("pv_max", 100.0),
             }
             vg.set(f"{item.tag}.controle", item.controle)
 
@@ -500,17 +591,18 @@ def _montar_cena(canvas, dados, carregar_valores=False):
                 item.alarmes = {"HH": None, "H": None, "L": None, "LL": None}
 
             # (se você já inicializa controle/faixa, pode também publicar aqui)
-            VariaveisGlobais().inicializar_tag(item.tag) 
+            VariaveisGlobais().inicializar_tag(item.tag)
             log_file = dados.get("logicas", {}) or {}
             if "analog_eq" in dados:
                 vg.set("analog.eq", dados.get("analog_eq", []) or [])
-                        # merge simples (arquivo vence)
+                # merge simples (arquivo vence)
             existentes = vg.get("logicas", {}) or {}
             existentes.update(log_file)
             vg.set("logicas", existentes)
 
             # (opcional) inicializa o passo atual para cada lógica
             import re
+
             for nome, spec in log_file.items():
                 passos = spec.get("passos", []) or []
                 if not passos:
@@ -518,7 +610,7 @@ def _montar_cena(canvas, dados, carregar_valores=False):
                 m = re.match(r"\s*(P\d+)\s*:", str(passos[0]))
                 if m:
                     vg.set(f"grafcet.{nome}.step", m.group(1))
-                                        
+
             canvas.variaveis.append(item)
 
         elif tipo == "svg":
@@ -538,14 +630,18 @@ def _montar_cena(canvas, dados, carregar_valores=False):
                 item.setZValue(obj.get("z", 0))
                 sx = obj.get("scale_x", 1.0)
                 sy = obj.get("scale_y", 1.0)
-                if abs(sx) < 0.01: sx = 1.0
-                if abs(sy) < 0.01: sy = 1.0
+                if abs(sx) < 0.01:
+                    sx = 1.0
+                if abs(sy) < 0.01:
+                    sy = 1.0
                 transform = QTransform().scale(sx, sy)
                 item.setTransform(transform)
                 rotation = obj.get("rotation", 0.0)
                 item.setRotation(rotation)
                 canvas.scene.addItem(item)
-                print(f"[SVG] tag: {obj.get('tag')}, pos: ({obj.get('x')}, {obj.get('y')}), rot: {rotation}, scale: ({sx}, {sy})")
+                print(
+                    f"[SVG] tag: {obj.get('tag')}, pos: ({obj.get('x')}, {obj.get('y')}), rot: {rotation}, scale: ({sx}, {sy})"
+                )
             except Exception as e:
                 print(f"[ERRO SVG] {e}")
                 continue
@@ -553,14 +649,14 @@ def _montar_cena(canvas, dados, carregar_valores=False):
         elif tipo == "text":
             item = EditableTextItem(obj.get("content", ""))
             item.setTextInteractionFlags(Qt.NoTextInteraction)  # nunca editável
-            item.setFlag(item.ItemIsSelectable, True)           # selecionável
-            item.setFlag(item.ItemIsMovable, False)             # não movível
+            item.setFlag(item.ItemIsSelectable, True)  # selecionável
+            item.setFlag(item.ItemIsMovable, False)  # não movível
             item.setPos(obj.get("x", 0), obj.get("y", 0))
             font = QFont(obj.get("font", "Arial"), obj.get("size", 12))
             font.setBold(obj.get("bold", False))
             font.setItalic(obj.get("italic", False))
             font.setUnderline(obj.get("underline", False))
-            item.setZValue(max_z + 1) 
+            item.setZValue(max_z + 1)
             item.setFont(font)
             item.setDefaultTextColor(QColor(obj.get("color", "#000000")))
             t = QTransform()
@@ -569,7 +665,7 @@ def _montar_cena(canvas, dados, carregar_valores=False):
 
         elif tipo == "touch_area":
             item = TouchAreaItem.from_dict(obj, canvas.main_window)
-            item.setFlag(item.ItemIsSelectable, True)           # selecionável
+            item.setFlag(item.ItemIsSelectable, True)  # selecionável
             item.setFlag(item.ItemIsMovable, True)
             item.setPos(obj.get("x", 0), obj.get("y", 0))
 
@@ -577,7 +673,9 @@ def _montar_cena(canvas, dados, carregar_valores=False):
             _capturar_baseline(item)
             if hasattr(item, "setFlags"):
                 flags = item.flags() & ~item.ItemIsMovable
-                if not isinstance(item, (EditableVariable, SvgObjectItem)) and not hasattr(item, "toPlainText"):
+                if not isinstance(
+                    item, (EditableVariable, SvgObjectItem)
+                ) and not hasattr(item, "toPlainText"):
                     flags &= ~item.ItemIsSelectable
                 item.setFlags(flags)
             item._mods = obj.get("mods", [])

@@ -1,10 +1,18 @@
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QTabWidget, QWidget, QFormLayout, QLineEdit,
-    QComboBox, QPushButton, QColorDialog,QSpinBox,QDialogButtonBox
+    QColorDialog,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QLineEdit,
+    QPushButton,
+    QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
-
-from PyQt5.QtGui import QColor
 
 class PropriedadesDialog(QDialog):
     def __init__(self, objeto=None, parent=None):
@@ -89,6 +97,7 @@ class PropriedadesDialog(QDialog):
         if cor.isValid():
             self.cor_texto_btn.setStyleSheet(f"background-color: {cor.name()}")
 
+
 class VariableDialog(QDialog):
     def __init__(self, parent=None, tag="", casas=2, digitos=4):
         super().__init__(parent)
@@ -120,5 +129,5 @@ class VariableDialog(QDialog):
         return {
             "tag": self.tag_edit.text(),
             "casas": self.casas_spin.value(),
-            "digitos": self.digitos_spin.value()
+            "digitos": self.digitos_spin.value(),
         }

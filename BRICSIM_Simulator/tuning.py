@@ -1,8 +1,19 @@
 from collections import deque
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QGridLayout, QLabel, QDoubleSpinBox, QHBoxLayout,
-                            QPushButton, QComboBox, QWidget,QCheckBox)
+
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QPainter, QColor, QPen, QFont
+from PyQt5.QtGui import QColor, QFont, QPainter, QPen
+from PyQt5.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDoubleSpinBox,
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 from singleton import VariaveisGlobais
 
 
@@ -54,9 +65,9 @@ class TrendWidget(QWidget):
                     p.drawLine(prev[0], prev[1], x, y)
                 prev = (x, y)
 
-        draw(self.buf_pv, QColor(0, 255, 255))    # ciano
-        draw(self.buf_sp, QColor(255, 0, 255))    # magenta
-        draw(self.buf_mv, QColor(255, 255, 0))    # amarelo
+        draw(self.buf_pv, QColor(0, 255, 255))  # ciano
+        draw(self.buf_sp, QColor(255, 0, 255))  # magenta
+        draw(self.buf_mv, QColor(255, 255, 0))  # amarelo
 
 
 class TuningDialog(QDialog):
@@ -70,21 +81,29 @@ class TuningDialog(QDialog):
         self.setStyleSheet("background-color: black; color: #00FF00;")
 
         # ---- Edição rápida de PV / SP / MV ----
-        self.edPV = QDoubleSpinBox(); self.edPV.setRange(-1e9, 1e9); self.edPV.setStyleSheet("background:#111; color:#00FF00;")
-        self.edSP = QDoubleSpinBox(); self.edSP.setRange(-1e9, 1e9); self.edSP.setStyleSheet("background:#111; color:#00FF00;")
-        self.edMV = QDoubleSpinBox(); self.edMV.setRange(0, 100);   self.edMV.setStyleSheet("background:#111; color:#00FF00;")
+        self.edPV = QDoubleSpinBox()
+        self.edPV.setRange(-1e9, 1e9)
+        self.edPV.setStyleSheet("background:#111; color:#00FF00;")
+        self.edSP = QDoubleSpinBox()
+        self.edSP.setRange(-1e9, 1e9)
+        self.edSP.setStyleSheet("background:#111; color:#00FF00;")
+        self.edMV = QDoubleSpinBox()
+        self.edMV.setRange(0, 100)
+        self.edMV.setStyleSheet("background:#111; color:#00FF00;")
 
-        self.btnApplyVals = QPushButton("Aplicar PV/SP/MV"); self.btnApplyVals.setStyleSheet("background:#222; color:#00FF00;")
+        self.btnApplyVals = QPushButton("Aplicar PV/SP/MV")
+        self.btnApplyVals.setStyleSheet("background:#222; color:#00FF00;")
         self.btnApplyVals.clicked.connect(self.apply_values)
         # Empurre este botão para a área de botões inferior
-        
-
 
         top_layout = QGridLayout()
-        
-        top_layout.addWidget(QLabel("Set PV"), 3, 0); top_layout.addWidget(self.edPV, 3, 1)
-        top_layout.addWidget(QLabel("Set SP"), 3, 2); top_layout.addWidget(self.edSP, 3, 3)
-        top_layout.addWidget(QLabel("Set MV"), 3, 4); top_layout.addWidget(self.edMV, 3, 5)
+
+        top_layout.addWidget(QLabel("Set PV"), 3, 0)
+        top_layout.addWidget(self.edPV, 3, 1)
+        top_layout.addWidget(QLabel("Set SP"), 3, 2)
+        top_layout.addWidget(self.edSP, 3, 3)
+        top_layout.addWidget(QLabel("Set MV"), 3, 4)
+        top_layout.addWidget(self.edMV, 3, 5)
 
         font_val = QFont("Consolas", 11)
 
@@ -174,7 +193,6 @@ class TuningDialog(QDialog):
         self.cmbMode.setCurrentText(self.vg.get(f"{self.tag}.modo", "MAN"))
         self.chkSPT.setChecked(conf.get("sp_tracking", False))  # <<< novo
 
-
     def update_values(self):
         pv = self.vg.get(f"{self.tag}.pv", 0)
         sp = self.vg.get(f"{self.tag}.sp", 0)
@@ -188,14 +206,16 @@ class TuningDialog(QDialog):
         conf["Kp"] = self.spnKp.value()
         conf["Ki"] = self.spnKi.value()
         conf["Kd"] = self.spnKd.value()
-        conf["sp_tracking"] = self.chkSPT.isChecked()   # <<< novo
+        conf["sp_tracking"] = self.chkSPT.isChecked()  # <<< novo
         self.vg.set(f"{self.tag}.controle", conf)
         self.vg.set(f"{self.tag}.modo", self.cmbMode.currentText())
 
     def _limits(self):
         conf = self.vg.get(f"{self.tag}.controle", {}) or {}
-        pv_min = conf.get("pv_min", 0.0); pv_max = conf.get("pv_max", 100.0)
-        if pv_min > pv_max: pv_min, pv_max = pv_max, pv_min
+        pv_min = conf.get("pv_min", 0.0)
+        pv_max = conf.get("pv_max", 100.0)
+        if pv_min > pv_max:
+            pv_min, pv_max = pv_max, pv_min
         return pv_min, pv_max
 
     def update_values(self):
@@ -224,5 +244,5 @@ class TuningDialog(QDialog):
         pv_min, pv_max = self._limits()
         # usa as APIs com regra
         self.vg.set_pv(self.tag, self.edPV.value())
-        self.vg.set_sp(self.tag, self.edSP.value())      # CAS manual será ignorado
-        self.vg.set_mv(self.tag, self.edMV.value())      # só MAN efetiva
+        self.vg.set_sp(self.tag, self.edSP.value())  # CAS manual será ignorado
+        self.vg.set_mv(self.tag, self.edMV.value())  # só MAN efetiva

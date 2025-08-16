@@ -4,13 +4,14 @@ class VariaveisGlobais:
     Cada chave (ex: "TAG.pv") mantém um histórico de valores.
     Suporta buffer temporário para cálculos em duas passadas.
     """
+
     _instance = None
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance.dados = {}      # chave -> lista de valores
-            cls._instance.buffer = {}     # valores temporários da passada 1
+            cls._instance.dados = {}  # chave -> lista de valores
+            cls._instance.buffer = {}  # valores temporários da passada 1
             cls._instance.usar_buffer = False
         return cls._instance
 
@@ -34,7 +35,11 @@ class VariaveisGlobais:
         """
         if self.usar_buffer and nome in self.buffer:
             return self.buffer[nome]
-        if nome not in self.dados or not isinstance(self.dados[nome], list) or not self.dados[nome]:
+        if (
+            nome not in self.dados
+            or not isinstance(self.dados[nome], list)
+            or not self.dados[nome]
+        ):
             return default
         return self.dados[nome][-1]
 
@@ -46,6 +51,7 @@ class VariaveisGlobais:
         if not isinstance(val, list):
             return []
         return val
+
     def passado(self, nome, atraso=1, default=0):
         """
         Retorna o valor de 'atraso' iterações atrás.
@@ -83,7 +89,8 @@ class VariaveisGlobais:
     def diagnostico(self):
         print("📋 DIAGNÓSTICO DO SINGLETON:")
         for nome, hist in self.dados.items():
-            if not isinstance(hist, list): continue
+            if not isinstance(hist, list):
+                continue
             atual = hist[-1] if hist else None
             print(f" - {nome:20} → len={len(hist):3} | atual = {atual}")
 

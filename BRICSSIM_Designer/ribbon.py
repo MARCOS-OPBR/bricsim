@@ -1,24 +1,44 @@
 # ribbon.py
-from PyQt5.QtWidgets import (
-    QWidget, QTabWidget, QToolButton, QVBoxLayout, QGroupBox,
-    QHBoxLayout, QGridLayout, QPushButton, QColorDialog, QComboBox,
-    QLabel, QSpinBox,QToolButton,QStackedLayout,QFontComboBox,QGraphicsTextItem,
+from canvas import EditableLine, EditablePolyline, SvgCanvas
+from functions import (
+    abrir_novo_documento,
+    alterar_cor_contorno,
+    alterar_cor_preenchimento,
+    alterar_espessura_contorno,
+    alterar_tipo_linha,
+    alternar_handles,
+    aplicar_formatacao_texto,
+    ativar_desenho_caminho,
+    ativar_desenho_linha,
+    ativar_desenho_texto,
+    ativar_modo_selecionar,
+    carregar_projeto,
+    escalar_item_selecionado,
+    exportar_imagem,
+    importar_imagem,
+    imprimir_imagem,
+    salvar_projeto,
 )
-from PyQt5.QtGui import QIcon,QColor,QFont
-from PyQt5.QtCore import QSize,Qt
-
+from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QColor, QFont, QIcon
+from PyQt5.QtWidgets import (
+    QColorDialog,
+    QComboBox,
+    QFontComboBox,
+    QGraphicsTextItem,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSpinBox,
+    QStackedLayout,
+    QTabWidget,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 from resources import icon_path
-from functions import (abrir_novo_documento,
-                        ativar_desenho_linha,
-                        ativar_modo_selecionar,
-                        alterar_cor_contorno,
-                        alterar_cor_preenchimento,
-                        alterar_espessura_contorno,alterar_tipo_linha,
-                        alternar_handles, aplicar_formatacao_texto,ativar_desenho_texto,
-                        salvar_projeto,carregar_projeto,importar_imagem,exportar_imagem
-                        , imprimir_imagem,escalar_item_selecionado,ativar_desenho_caminho,)
-from canvas import SvgCanvas,EditableLine,EditablePolyline
-
 
 
 def create_tool_button(icon_filename, tooltip):
@@ -28,6 +48,7 @@ def create_tool_button(icon_filename, tooltip):
     btn.setToolTip(tooltip)
     btn.setAutoRaise(True)
     return btn
+
 
 class Ribbon(QWidget):
     def __init__(self, parent=None):
@@ -69,11 +90,11 @@ class Ribbon(QWidget):
 
         btn_novo = create_tool_button("new.svg", "Nova Tela")
         btn_novo.clicked.connect(lambda: abrir_novo_documento(self.main_window))
-        
-        btn_abrir=create_tool_button("open.svg", "Abrir Tela")
+
+        btn_abrir = create_tool_button("open.svg", "Abrir Tela")
         btn_abrir.clicked.connect(lambda: carregar_projeto(self.main_window))
 
-        btn_salvar=create_tool_button("save.svg", "Salvar Tela")
+        btn_salvar = create_tool_button("save.svg", "Salvar Tela")
         btn_salvar.clicked.connect(lambda: salvar_projeto(self.main_window))
 
         btn_importar = create_tool_button("import.svg", "Importar")
@@ -83,12 +104,12 @@ class Ribbon(QWidget):
         btn_exportar.clicked.connect(lambda: exportar_imagem(self.main_window))
         btn_imprimir.clicked.connect(lambda: imprimir_imagem(self.main_window))
 
-        g_layout.addWidget(btn_novo,0,0)
-        g_layout.addWidget(btn_abrir,0,1)
-        g_layout.addWidget(btn_salvar,0,2)
-        g_layout.addWidget(btn_importar,0,3)
-        g_layout.addWidget(btn_exportar,0,4)
-        g_layout.addWidget(btn_imprimir,0,5)
+        g_layout.addWidget(btn_novo, 0, 0)
+        g_layout.addWidget(btn_abrir, 0, 1)
+        g_layout.addWidget(btn_salvar, 0, 2)
+        g_layout.addWidget(btn_importar, 0, 3)
+        g_layout.addWidget(btn_exportar, 0, 4)
+        g_layout.addWidget(btn_imprimir, 0, 5)
         grupo.setLayout(g_layout)
 
         layout.addWidget(grupo)
@@ -119,7 +140,12 @@ class Ribbon(QWidget):
         btn_cut.clicked.connect(self.main_window.canvas._cortar_itens)
 
         btn_delete = create_tool_button("delete.svg", "Excluir (DEL)")
-        btn_delete.clicked.connect(lambda: [main_window.canvas.scene.removeItem(i) for i in main_window.canvas.scene.selectedItems()])
+        btn_delete.clicked.connect(
+            lambda: [
+                main_window.canvas.scene.removeItem(i)
+                for i in main_window.canvas.scene.selectedItems()
+            ]
+        )
 
         g1.addWidget(btn_undo, 0, 0)
         g1.addWidget(btn_redo, 0, 1)
@@ -134,44 +160,60 @@ class Ribbon(QWidget):
         selecao = QGroupBox("Seleção")
         g2 = QGridLayout()
 
-        btn_select=create_tool_button("select.svg", "Selecionar(Espaço)")
+        btn_select = create_tool_button("select.svg", "Selecionar(Espaço)")
         btn_select.clicked.connect(lambda: ativar_modo_selecionar(self.main_window))
-        g2.addWidget(btn_select,0,0)
-        
-        btn_select_all = create_tool_button("select_all.svg", "Selecionar Tudo (Ctrl+A)")
+        g2.addWidget(btn_select, 0, 0)
+
+        btn_select_all = create_tool_button(
+            "select_all.svg", "Selecionar Tudo (Ctrl+A)"
+        )
         btn_select_all.clicked.connect(self.main_window.canvas._selecionar_tudo)
 
-        btn_inverter = create_tool_button("invert.svg", "Inverter Seleção (Ctrl+Shift+A)")
+        btn_inverter = create_tool_button(
+            "invert.svg", "Inverter Seleção (Ctrl+Shift+A)"
+        )
         btn_inverter.clicked.connect(self.main_window.canvas._inverter_selecao)
 
-        g2.addWidget(btn_select_all,0,1)
-        g2.addWidget(btn_inverter,0,2)
+        g2.addWidget(btn_select_all, 0, 1)
+        g2.addWidget(btn_inverter, 0, 2)
         selecao.setLayout(g2)
 
         # Grupo 3: Alinhamento
         alinhamento = QGroupBox("Alinhamento")
         g3 = QGridLayout()
         btn_align_left = create_tool_button("align_left.svg", "Alinhar à Esquerda")
-        btn_align_left.clicked.connect(lambda: self.main_window.canvas._alinhar_objetos("esquerda"))
+        btn_align_left.clicked.connect(
+            lambda: self.main_window.canvas._alinhar_objetos("esquerda")
+        )
 
         btn_align_center = create_tool_button("align_center.svg", "Centralizar")
-        btn_align_center.clicked.connect(lambda: self.main_window.canvas._alinhar_objetos("centro"))
+        btn_align_center.clicked.connect(
+            lambda: self.main_window.canvas._alinhar_objetos("centro")
+        )
 
         btn_align_right = create_tool_button("align_right.svg", "Alinhar à Direita")
-        btn_align_right.clicked.connect(lambda: self.main_window.canvas._alinhar_objetos("direita"))
+        btn_align_right.clicked.connect(
+            lambda: self.main_window.canvas._alinhar_objetos("direita")
+        )
 
-        g3.addWidget(btn_align_left,0,0)
-        g3.addWidget(btn_align_center,0,1)
-        g3.addWidget(btn_align_right,0,2)
+        g3.addWidget(btn_align_left, 0, 0)
+        g3.addWidget(btn_align_center, 0, 1)
+        g3.addWidget(btn_align_right, 0, 2)
 
         btn_align_top = create_tool_button("align_top.svg", "Alinhar ao Topo")
-        btn_align_top.clicked.connect(lambda: self.main_window.canvas._alinhar_objetos("topo"))
+        btn_align_top.clicked.connect(
+            lambda: self.main_window.canvas._alinhar_objetos("topo")
+        )
 
         btn_align_middle = create_tool_button("align_middle.svg", "Alinhar ao Meio")
-        btn_align_middle.clicked.connect(lambda: self.main_window.canvas._alinhar_objetos("meio"))
+        btn_align_middle.clicked.connect(
+            lambda: self.main_window.canvas._alinhar_objetos("meio")
+        )
 
         btn_align_bottom = create_tool_button("align_bottom.svg", "Alinhar à Base")
-        btn_align_bottom.clicked.connect(lambda: self.main_window.canvas._alinhar_objetos("base"))
+        btn_align_bottom.clicked.connect(
+            lambda: self.main_window.canvas._alinhar_objetos("base")
+        )
 
         g3.addWidget(btn_align_top, 1, 0)
         g3.addWidget(btn_align_middle, 1, 1)
@@ -182,21 +224,25 @@ class Ribbon(QWidget):
         # Grupo 4: Ordem
         ordem = QGroupBox("Ordem")
         g4 = QGridLayout()
-        
+
         btn_trazer_frente = create_tool_button("bring_front.svg", "Trazer para Frente")
         btn_enviar_tras = create_tool_button("send_back.svg", "Enviar para Trás")
         btn_avancar = create_tool_button("forward.svg", "Avançar")
         btn_recuar = create_tool_button("backward.svg", "Recuar")
 
-        btn_trazer_frente.clicked.connect(lambda: self.main_window.canvas.trazer_para_frente())
-        btn_enviar_tras.clicked.connect(lambda: self.main_window.canvas.enviar_para_tras())
+        btn_trazer_frente.clicked.connect(
+            lambda: self.main_window.canvas.trazer_para_frente()
+        )
+        btn_enviar_tras.clicked.connect(
+            lambda: self.main_window.canvas.enviar_para_tras()
+        )
         btn_avancar.clicked.connect(lambda: self.main_window.canvas.avancar_z())
         btn_recuar.clicked.connect(lambda: self.main_window.canvas.recuar_z())
 
-        g4.addWidget(btn_trazer_frente,0,0)
-        g4.addWidget(btn_avancar,0,1)
-        g4.addWidget(btn_recuar,1,0)
-        g4.addWidget(btn_enviar_tras,1,1)
+        g4.addWidget(btn_trazer_frente, 0, 0)
+        g4.addWidget(btn_avancar, 0, 1)
+        g4.addWidget(btn_recuar, 1, 0)
+        g4.addWidget(btn_enviar_tras, 1, 1)
         ordem.setLayout(g4)
 
         # Grupo 5: Dimensão
@@ -206,20 +252,30 @@ class Ribbon(QWidget):
         btn_escalar.clicked.connect(lambda: escalar_item_selecionado(self.main_window))
         g5.addWidget(btn_escalar, 0, 0)
 
-        btn_rot_horario = create_tool_button("rotate_hour.svg", "Rotacionar Sentido Horário")
-        btn_rot_antihorario = create_tool_button("rotate_anti.svg", "Rotacionar Sentido Anti-Horário")
+        btn_rot_horario = create_tool_button(
+            "rotate_hour.svg", "Rotacionar Sentido Horário"
+        )
+        btn_rot_antihorario = create_tool_button(
+            "rotate_anti.svg", "Rotacionar Sentido Anti-Horário"
+        )
         btn_flip_h = create_tool_button("flip_horizontal.svg", "Espelhar Horizontal")
         btn_flip_v = create_tool_button("flip_vertical.svg", "Espelhar Vertical")
 
-        btn_rot_horario.clicked.connect(lambda: self.main_window.canvas.rotacionar_selecionados(90))
-        btn_rot_antihorario.clicked.connect(lambda: self.main_window.canvas.rotacionar_selecionados(-90))
-        btn_flip_h.clicked.connect(lambda: self.main_window.canvas.espelhar_horizontal())
+        btn_rot_horario.clicked.connect(
+            lambda: self.main_window.canvas.rotacionar_selecionados(90)
+        )
+        btn_rot_antihorario.clicked.connect(
+            lambda: self.main_window.canvas.rotacionar_selecionados(-90)
+        )
+        btn_flip_h.clicked.connect(
+            lambda: self.main_window.canvas.espelhar_horizontal()
+        )
         btn_flip_v.clicked.connect(lambda: self.main_window.canvas.espelhar_vertical())
 
-        g5.addWidget(btn_rot_horario,0,1)
-        g5.addWidget(btn_rot_antihorario,0,2)
-        g5.addWidget(btn_flip_h,1,0)
-        g5.addWidget(btn_flip_v,1,1)
+        g5.addWidget(btn_rot_horario, 0, 1)
+        g5.addWidget(btn_rot_antihorario, 0, 2)
+        g5.addWidget(btn_flip_h, 1, 0)
+        g5.addWidget(btn_flip_v, 1, 1)
         dimensao.setLayout(g5)
 
         # Adiciona todos os grupos ao layout da aba
@@ -237,16 +293,16 @@ class Ribbon(QWidget):
 
         grupo_formas = QGroupBox("Formas")
         g1 = QGridLayout()
-        
+
         btn_linha = create_tool_button("line.svg", "Desenhar Linha")
         btn_linha.clicked.connect(lambda: ativar_desenho_linha(self.main_window))
-        g1.addWidget(btn_linha,0,0)
+        g1.addWidget(btn_linha, 0, 0)
 
         btn_texto = create_tool_button("A.svg", "Desenhar Linha")
         btn_texto.clicked.connect(lambda: ativar_desenho_texto(self.main_window))
-        g1.addWidget(btn_texto,2,1)
+        g1.addWidget(btn_texto, 2, 1)
 
-        g1.addWidget(create_tool_button("table.svg", "Tabela"),1,1)
+        g1.addWidget(create_tool_button("table.svg", "Tabela"), 1, 1)
 
         # Após btn_linha:
         btn_conector = create_tool_button("connect.svg", "Desenhar Caminho")
@@ -263,7 +319,6 @@ class Ribbon(QWidget):
         self.stack_estilo.addWidget(self.grupo_estilo_linha)  # index 0
         self.stack_estilo.addWidget(self.grupo_estilo_texto)  # index 1
 
-       
         # Adiciona tudo ao layout da aba
         layout.addWidget(grupo_formas)
         layout.addWidget(self.grupo_estilo_linha)
@@ -278,8 +333,8 @@ class Ribbon(QWidget):
         g = QVBoxLayout()
         btn_svg = create_tool_button("valve.svg", "Inserir SVG com TAG")
         btn_svg.setIconSize(QSize(48, 48))  # Tamanho do ícone
-        btn_svg.setFixedSize(64, 64)        # Tamanho do botão (inclui margem)
-        btn_svg.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)  
+        btn_svg.setFixedSize(64, 64)  # Tamanho do botão (inclui margem)
+        btn_svg.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         btn_svg.clicked.connect(lambda: self.main_window.canvas.importar_svg())
         g.addWidget(btn_svg)
         grupo_isa.setLayout(g)
@@ -287,7 +342,9 @@ class Ribbon(QWidget):
         btn_variavel.setIconSize(QSize(48, 48))
         btn_variavel.setFixedSize(64, 64)
         btn_variavel.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        btn_variavel.clicked.connect(lambda: self.main_window.canvas.ativar_modo_inserir_variavel())
+        btn_variavel.clicked.connect(
+            lambda: self.main_window.canvas.ativar_modo_inserir_variavel()
+        )
         g.addWidget(btn_variavel)
 
         layout.addWidget(grupo_isa)
@@ -307,7 +364,9 @@ class Ribbon(QWidget):
         btn_grid.setText("Grade")
         btn_grid.setCheckable(True)
         btn_grid.setToolTip("Exibir Grade")
-        btn_grid.clicked.connect(lambda checked: self.main_window.canvas.set_grid_visible(checked))
+        btn_grid.clicked.connect(
+            lambda checked: self.main_window.canvas.set_grid_visible(checked)
+        )
         layout_grid.addWidget(btn_grid)
 
         label_spacing = QLabel("Tamanho:")
@@ -317,14 +376,18 @@ class Ribbon(QWidget):
         spin_grid.setRange(10, 200)
         spin_grid.setValue(25)
         spin_grid.setToolTip("Espaçamento entre os pontos do grid")
-        spin_grid.valueChanged.connect(lambda val: self.main_window.canvas.set_grid_spacing(val))
+        spin_grid.valueChanged.connect(
+            lambda val: self.main_window.canvas.set_grid_spacing(val)
+        )
         layout_grid.addWidget(spin_grid)
 
         btn_snap = QToolButton()
         btn_snap.setText("Atrair a Grade")
         btn_snap.setCheckable(True)
         btn_snap.setToolTip("Snap to Grid")
-        btn_snap.clicked.connect(lambda checked: self.main_window.canvas.set_snap_to_grid(checked))
+        btn_snap.clicked.connect(
+            lambda checked: self.main_window.canvas.set_snap_to_grid(checked)
+        )
         g.addWidget(btn_snap)
 
         g.addLayout(layout_grid)
@@ -336,7 +399,9 @@ class Ribbon(QWidget):
         btn_handles.setToolTip("Exibir Handles")
         btn_handles.setCheckable(True)
         btn_handles.setChecked(True)
-        btn_handles.clicked.connect(lambda checked: alternar_handles(self.main_window, checked))
+        btn_handles.clicked.connect(
+            lambda checked: alternar_handles(self.main_window, checked)
+        )
         g.addWidget(btn_handles)
 
         grupo_visual.setLayout(g)
@@ -348,19 +413,21 @@ class Ribbon(QWidget):
 
         btn_mais = create_tool_button("zoom_in.svg", "Zoom +")
         btn_mais.clicked.connect(lambda: self.main_window.canvas.zoom_mais())
-        z.addWidget(btn_mais,0,0)
+        z.addWidget(btn_mais, 0, 0)
 
         btn_menos = create_tool_button("zoom_out.svg", "Zoom -")
         btn_menos.clicked.connect(lambda: self.main_window.canvas.zoom_menos())
-        z.addWidget(btn_menos,0,1)
+        z.addWidget(btn_menos, 0, 1)
 
         btn_ajustar = create_tool_button("fit.svg", "Ajustar à Tela")
         btn_ajustar.clicked.connect(lambda: self.main_window.canvas.ajustar_a_tela())
-        z.addWidget(btn_ajustar,0,2)
+        z.addWidget(btn_ajustar, 0, 2)
 
         btn_janela = create_tool_button("zoom_rect.svg", "Zoom por Janela")
-        btn_janela.clicked.connect(lambda: self.main_window.canvas.iniciar_zoom_por_janela())
-        z.addWidget(btn_janela,0,3)
+        btn_janela.clicked.connect(
+            lambda: self.main_window.canvas.iniciar_zoom_por_janela()
+        )
+        z.addWidget(btn_janela, 0, 3)
 
         grupo_zoom.setLayout(z)
         layout.addWidget(grupo_zoom)
@@ -402,7 +469,6 @@ class Ribbon(QWidget):
         layout.addWidget(grupo_tools)
         aba.setLayout(layout)
         return aba
-    
 
     def abrir_seletor_cor_texto(self):
         cor = QColorDialog.getColor()
@@ -410,7 +476,7 @@ class Ribbon(QWidget):
             aplicar_formatacao_texto(self.main_window, cor=cor)
 
     def atualizar_estilo_visual(self, modo):
-        if modo == "texto"  :
+        if modo == "texto":
             self.grupo_estilo_texto.show()
             self.grupo_estilo_linha.hide()
             self.stack_estilo.setCurrentIndex(1)
@@ -421,7 +487,6 @@ class Ribbon(QWidget):
         else:
             self.grupo_estilo_texto.hide()
             self.grupo_estilo_linha.hide()
-
 
     def atualizar_estilo_texto_selecionado(self, item: QGraphicsTextItem):
         font = item.font()
@@ -436,23 +501,25 @@ class Ribbon(QWidget):
         grupo_estilo = QGroupBox("Estilo")
         g2 = QGridLayout()
         # Cor de contorno
-        g2.addWidget(QLabel("Cor de Contorno:"),0,0)
+        g2.addWidget(QLabel("Cor de Contorno:"), 0, 0)
         btn_cor_contorno = QPushButton("Cor de Contorno")
         btn_cor_contorno.clicked.connect(lambda: alterar_cor_contorno(self.main_window))
 
-        g2.addWidget(btn_cor_contorno,1,0)
+        g2.addWidget(btn_cor_contorno, 1, 0)
 
         # Tipo de contorno
-        g2.addWidget(QLabel("Tipo de Contorno:"),0,1)
+        g2.addWidget(QLabel("Tipo de Contorno:"), 0, 1)
         tipo_linha = QComboBox()
-        tipo_linha.currentTextChanged.connect(lambda estilo: alterar_tipo_linha(self.main_window, estilo))
+        tipo_linha.currentTextChanged.connect(
+            lambda estilo: alterar_tipo_linha(self.main_window, estilo)
+        )
 
         tipo_linha.addItems(["Contínuo", "Tracejado", "Pontilhado", "Traço-Ponto"])
         tipo_linha.setToolTip("Tipo de Linha")
-        g2.addWidget(tipo_linha,1,1)
+        g2.addWidget(tipo_linha, 1, 1)
 
-        #Espessura Linha
-        g2.addWidget(QLabel("Espessura:"),0,2)
+        # Espessura Linha
+        g2.addWidget(QLabel("Espessura:"), 0, 2)
         combo_espessura = QComboBox()
         combo_espessura.setToolTip("Espessura do Contorno")
         valores_decimais = [f"{i/10:.1f}" for i in range(1, 10)]
@@ -463,20 +530,21 @@ class Ribbon(QWidget):
         combo_espessura.setCurrentText("2")  # valor padrão: 2
 
         combo_espessura.currentIndexChanged.connect(
-            lambda index: alterar_espessura_contorno(self.main_window, float(combo_espessura.currentText()))
+            lambda index: alterar_espessura_contorno(
+                self.main_window, float(combo_espessura.currentText())
+            )
         )
-        g2.addWidget(combo_espessura,1,2)
-
+        g2.addWidget(combo_espessura, 1, 2)
 
         # Extremidade inicial
-        g2.addWidget(QLabel("Extremidade Inicial:"),2,0)
+        g2.addWidget(QLabel("Extremidade Inicial:"), 2, 0)
         extremidade_ini = QComboBox()
         estilos_seta = ["Nenhuma", "Seta", "Seta Aberta", "Círculo", "Quadrado"]
         extremidade_ini.addItems(estilos_seta)
         extremidade_ini.setToolTip("Extremidade Inicial")
 
         # Extremidade final
-        g2.addWidget(QLabel("Extremidade Final:"),2,1)
+        g2.addWidget(QLabel("Extremidade Final:"), 2, 1)
         extremidade_fim = QComboBox()
         extremidade_fim.addItems(estilos_seta)
         extremidade_fim.setToolTip("Extremidade Final")
@@ -489,7 +557,7 @@ class Ribbon(QWidget):
 
         self.extremidade_ini = extremidade_ini
         self.extremidade_fim = extremidade_fim
-        #TAMANHO DAS SETAS
+        # TAMANHO DAS SETAS
 
         g2.addWidget(QLabel("Tamanho da Extremidade:"), 2, 3)
         combo_tamanho_ext = QComboBox()
@@ -497,14 +565,18 @@ class Ribbon(QWidget):
         combo_tamanho_ext.setCurrentText("12")
         g2.addWidget(combo_tamanho_ext, 3, 3)
         self.combo_tamanho_ext = combo_tamanho_ext
-        self.combo_tamanho_ext.currentTextChanged.connect(self._atualizar_tamanho_extremidade)
+        self.combo_tamanho_ext.currentTextChanged.connect(
+            self._atualizar_tamanho_extremidade
+        )
         self.tamanho_extremidade = 12
 
         # Cor de preenchimento
-        g2.addWidget(QLabel("Cor de Preenchimento:"),2,2)
+        g2.addWidget(QLabel("Cor de Preenchimento:"), 2, 2)
         btn_cor_preench = QPushButton("Cor de Preenchimento")
-        btn_cor_preench.clicked.connect(lambda: alterar_cor_preenchimento(self.main_window))
-        g2.addWidget(btn_cor_preench,3,2)
+        btn_cor_preench.clicked.connect(
+            lambda: alterar_cor_preenchimento(self.main_window)
+        )
+        g2.addWidget(btn_cor_preench, 3, 2)
         grupo_estilo.setLayout(g2)
         extremidade_ini.currentTextChanged.connect(
             lambda estilo: self._aplicar_extremidade("inicio", estilo)
@@ -514,10 +586,10 @@ class Ribbon(QWidget):
         )
         self.extremidade_ini = extremidade_ini
         self.extremidade_fim = extremidade_fim
-        g2.addWidget(extremidade_ini,3,0)
-        g2.addWidget(extremidade_fim,3,1)
+        g2.addWidget(extremidade_ini, 3, 0)
+        g2.addWidget(extremidade_fim, 3, 1)
         return grupo_estilo
-    
+
     def _aplicar_extremidade(self, qual, estilo):
         for item in self.main_window.canvas.scene.selectedItems():
             if isinstance(item, EditableLine):
@@ -531,8 +603,11 @@ class Ribbon(QWidget):
                     item.estilo_ini = estilo
                 elif qual == "fim":
                     item.estilo_fim = estilo
-                item.update_line() if isinstance(item, EditableLine) else item.update_extremidades()
-
+                (
+                    item.update_line()
+                    if isinstance(item, EditableLine)
+                    else item.update_extremidades()
+                )
 
     def _criar_estilo_texto(self):
         grupo = QGroupBox("Texto")
@@ -573,18 +648,34 @@ class Ribbon(QWidget):
         linha2.addWidget(self.btn_cor)
 
         # Ligações
-        self.btn_negrito.clicked.connect(lambda _: aplicar_formatacao_texto(self.main_window, negrito=self.btn_negrito.isChecked()))
-        self.btn_italico.clicked.connect(lambda _: aplicar_formatacao_texto(self.main_window, italico=self.btn_italico.isChecked()))
-        self.btn_sublinhado.clicked.connect(lambda _: aplicar_formatacao_texto(self.main_window, sublinhado=self.btn_sublinhado.isChecked()))
-        self.combo_fonte.currentFontChanged.connect(lambda font: aplicar_formatacao_texto(self.main_window, fonte=font.family()))
-        self.combo_tamanho.currentTextChanged.connect(lambda size: aplicar_formatacao_texto(self.main_window, tamanho=int(size)))
+        self.btn_negrito.clicked.connect(
+            lambda _: aplicar_formatacao_texto(
+                self.main_window, negrito=self.btn_negrito.isChecked()
+            )
+        )
+        self.btn_italico.clicked.connect(
+            lambda _: aplicar_formatacao_texto(
+                self.main_window, italico=self.btn_italico.isChecked()
+            )
+        )
+        self.btn_sublinhado.clicked.connect(
+            lambda _: aplicar_formatacao_texto(
+                self.main_window, sublinhado=self.btn_sublinhado.isChecked()
+            )
+        )
+        self.combo_fonte.currentFontChanged.connect(
+            lambda font: aplicar_formatacao_texto(self.main_window, fonte=font.family())
+        )
+        self.combo_tamanho.currentTextChanged.connect(
+            lambda size: aplicar_formatacao_texto(self.main_window, tamanho=int(size))
+        )
 
         layout.addLayout(linha1)
         layout.addLayout(linha2)
         grupo.setLayout(layout)
 
         return grupo
-    
+
     def atualizar_estilo_linha_selecionado(self, item):
         pen = None
         if hasattr(item, "pen"):
@@ -597,7 +688,7 @@ class Ribbon(QWidget):
                 Qt.SolidLine: "Contínuo",
                 Qt.DashLine: "Tracejado",
                 Qt.DotLine: "Pontilhado",
-                Qt.DashDotLine: "Traço-Ponto"
+                Qt.DashDotLine: "Traço-Ponto",
             }.get(pen.style(), "Contínuo")
 
             espessura = str(pen.width())
@@ -609,6 +700,7 @@ class Ribbon(QWidget):
                     break
 
             self.tipo_linha.setCurrentText(estilo)
+
     def _atualizar_tamanho_extremidade(self, valor):
         try:
             self.tamanho_extremidade = int(valor)
@@ -621,4 +713,5 @@ class Ribbon(QWidget):
         except ValueError:
             pass
 
- ##############################################################################################################################   
+
+##############################################################################################################################

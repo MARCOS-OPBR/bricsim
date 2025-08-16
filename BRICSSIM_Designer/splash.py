@@ -1,6 +1,12 @@
-from PyQt5.QtWidgets import QWidget, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem,QApplication
-from PyQt5.QtGui import QPixmap, QPainter
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, pyqtProperty, QObject
+from PyQt5.QtCore import QObject, QPropertyAnimation, Qt, QTimer, pyqtProperty
+from PyQt5.QtGui import QPainter, QPixmap
+from PyQt5.QtWidgets import (
+    QApplication,
+    QGraphicsPixmapItem,
+    QGraphicsScene,
+    QGraphicsView,
+    QWidget,
+)
 
 
 class OpacityWrapper(QObject):
@@ -62,15 +68,13 @@ class SplashScreen(QWidget):
 
         self.wrapper = OpacityWrapper(self.logo_item)
 
-
-
-
     def show_with_fade(self, callback):
         self.show()
-        self.animation.finished.connect(lambda: QTimer.singleShot(500, lambda: self.finish(callback)))
+        self.animation.finished.connect(
+            lambda: QTimer.singleShot(500, lambda: self.finish(callback))
+        )
         self.animation.start()
 
     def finish(self, callback):
         self.close()
         callback()
-
