@@ -1,0 +1,95 @@
+✅ FUNCIONALIDADES IMPLEMENTADAS
+🎨 Interface
+Ribbon customizado com abas: Arquivo, Editar, Desenhar, Inserir, Exibir, Revisar, Preferências, Tools
+
+Sidebar dividida (biblioteca e árvore de navegação) – layout visual
+
+Canvas central
+
+StatusBar com coordenadas e comandos – layout visual
+
+📄 Novo Documento
+Caixa de diálogo para:
+
+Nome da tela
+
+Unidade da planta
+
+Resolução (1920×1080, etc.)
+
+Cor de fundo
+
+Grade (check, ainda não implementada funcionalmente)
+
+Aplica título à janela: BRICSIM Designer - nome.tbr
+
+Limpa e reinicializa o canvas
+
+Cria e desenha área útil visível delimitada (branca) sobre fundo #FFFFA9
+
+✏️ Modo Linha
+Clique e arraste para desenhar linhas
+
+Snap aos pontos existentes
+
+Shift trava a linha em ângulos múltiplos de 45°
+
+Restrição de construção: só permite dentro da área útil
+
+Zoom com a roda do mouse centrado no cursor
+
+🎯 Modo Selecionar
+Caixa de seleção com dois modos:
+
+Esquerda → Direita: linha contínua, seleciona objetos contidos
+
+Direita → Esquerda: linha tracejada, seleciona objetos tocados
+
+Objetos selecionáveis (linha)
+
+Clicando diretamente sobre objetos → seleção única
+
+Caixa de seleção só inicia se não clicar sobre um handle
+
+🔵 Handles Editáveis
+Cada linha tem dois pontos de controle azuis
+
+Handles são clicáveis e movíveis
+
+Cursor muda ao passar por eles
+
+Linha atualiza em tempo real conforme o handle é arrastado
+
+Handles não interferem na seleção
+
+🧰 ESTRUTURA DE CÓDIGO (bem modular)
+main_window.py: monta a janela principal
+
+canvas.py: toda a lógica do canvas, seleção, desenho, zoom, etc.
+
+functions.py: funções auxiliares acionadas por botões (ex: novo documento)
+
+ribbon.py: constrói o Ribbon com todos os botões e abas
+
+input_handlers.py: pronto para comportamentos de mouse e teclado (em expansão)
+
+shortcuts.py: estrutura para atalhos (preparado)
+
+resources/icons/: ícones SVG do Ribbon
+
+🧱 PRONTO PARA EXPANDIR
+Você já está com uma fundação excelente para agora implementar:
+
+🧩 Outros objetos gráficos (retângulo, elipse, texto, tabela, conector ISA)
+
+💾 Salvar e abrir arquivos .tbr (layout + metadados)
+
+🔁 Modo copiar/colar/duplicar
+
+🧠 Adicionar modificadores lógicos e comportamentos
+
+🔎 Grade, snapping avançado, magnetismo
+
+🧮 Editor gráfico de fórmulas (como mencionou no início)
+
+🔄 Integração com modelador e simulador (.mbr e .sbr)

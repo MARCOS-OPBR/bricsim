@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="120"
+   height="160"
+   viewBox="0 0 120 160"
+   version="1.1"
+   id="svg5"
+   sodipodi:docname="valve.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs5" />
+  <sodipodi:namedview
+     id="namedview5"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#505050"
+     inkscape:zoom="5.31875"
+     inkscape:cx="44.841363"
+     inkscape:cy="83.384254"
+     inkscape:window-width="1920"
+     inkscape:window-height="1111"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg5" />
+  <!-- Cúpula superior -->
+  <!-- Base da cúpula -->
+  <line
+     x1="20"
+     y1="40"
+     x2="100"
+     y2="40"
+     stroke="#000000"
+     stroke-width="2"
+     id="line1" />
+  <!-- Hastes verticais -->
+  <path
+     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;enable-background:accumulate;stop-color:#000000;fill:#5050fa;fill-opacity:1;stroke:#000000;stroke-opacity:1"
+     d="m 31.43056,39 0.245571,52.395925 8.240404,3.639621 L 40,39 Z"
+     id="path14"
+     sodipodi:nodetypes="ccccc" />
+  <path
+     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;enable-background:accumulate;stop-color:#000000;stroke:#000000;stroke-opacity:1;fill:#c8c8c8;fill-opacity:1"
+     d="M 57.100456,39.999489 V 96.95652 h 5.799087 l 0.09401,-56.957031 z"
+     id="path18"
+     sodipodi:nodetypes="ccccc" />
+  <path
+     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;enable-background:accumulate;stop-color:#000000;stroke:#000000;stroke-opacity:1;fill:#5050fa;fill-opacity:1"
+     d="M 82.37063,40 82.370846,94.311859 90,90 90.073553,40 Z"
+     id="path16"
+     sodipodi:nodetypes="ccccc" />
+  <!-- Corpo da válvula -->
+  <g
+     id="corpo"
+     style="opacity:1">
+    <path
+       style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;enable-background:accumulate;stop-color:#000000;stop-opacity:1;fill:#c8c8c8;fill-opacity:1;stroke:#000000;stroke-opacity:1"
+       d="m 29,87.585937 v 44.828123 l 1.707031,-1.70703 c 2.264298,-2.2643 6.494358,-4.1324 11.708985,-5.35937 C 47.630642,124.12069 53.816667,123.5 60,123.5 c 6.183333,0 12.369358,0.62069 17.583984,1.84766 5.214627,1.22697 9.444687,3.09507 11.708985,5.35937 L 91,132.41406 V 87.585937 l -1.707031,1.707032 C 87.028671,91.557266 82.798611,93.425373 77.583984,94.652344 72.369358,95.879315 66.183333,96.5 60,96.5 53.816667,96.5 47.630642,95.879315 42.416016,94.652344 37.201389,93.425373 32.971329,91.557266 30.707031,89.292969 Z"
+       id="path2"
+       sodipodi:nodetypes="ccsssssccsssssc" />
+  </g>
+  <!-- Flanges planos -->
+  <path
+     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;enable-background:accumulate;stop-color:#000000;fill:#c8c8c8;fill-opacity:1;stroke:#000000;stroke-opacity:1"
+     d="M 16.878906,87.585937 V 132.41406 H 29 V 87.585937 Z"
+     id="path7"
+     sodipodi:nodetypes="ccccc"
+     inkscape:label="flange_e" />
+  <path
+     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;enable-background:accumulate;stop-color:#000000;fill:#c8c8c8;fill-opacity:1;stroke:#000000;stroke-opacity:1"
+     d="m 91,87.585937 v 44.828123 h 12 V 87.585937 Z"
+     id="path9"
+     sodipodi:nodetypes="ccccc" />
+  <path
+     style="baseline-shift:baseline;display:inline;overflow:visible;vector-effect:none;fill-opacity:1;enable-background:accumulate;stop-color:#000000;stroke:#000000;stroke-opacity:1;fill:#5050fa"
+     d="m 60,12.792969 c -11.015724,0 -20.993705,2.87793 -28.236328,7.550781 C 24.521048,25.016601 20,31.507677 20,38.705078 V 39 h 40 40 V 38.705078 C 100,31.507677 95.478952,25.016601 88.236328,20.34375 80.993705,15.670899 71.015724,12.792969 60,12.792969 Z"
+     id="path12"
+     sodipodi:nodetypes="ssscccsss"
+     inkscape:label="Cupula" />
+</svg>

@@ -1,0 +1,95 @@
+{
+    "telas": [
+        {
+            "nome": "exemplo",
+            "objetos": [
+                {
+                    "type": "svg",
+                    "tag": "v01",
+                    "paths": [],
+                    "x": 557.0,
+                    "y": 204.0,
+                    "z": 1000001.0,
+                    "scale_x": 1.0,
+                    "scale_y": 1.0,
+                    "rotation": 0.0,
+                    "shear_x": 0.0,
+                    "shear_y": 0.0
+                },
+                {
+                    "type": "linha",
+                    "x1": 393.0,
+                    "y1": 316.0,
+                    "x2": 847.0176208034221,
+                    "y2": 316.0,
+                    "color": "#000000",
+                    "width": 2.0,
+                    "style": 1,
+                    "estilo_ini": "Nenhuma",
+                    "estilo_fim": "Seta",
+                    "tamanho_extremidade": null,
+                    "z": 1.0,
+                    "rotation": 0.0,
+                    "scale_x": 1.0,
+                    "scale_y": 1.0,
+                    "id": 2203947085280
+                },
+                {
+                    "type": "variavel",
+                    "x": 405.0,
+                    "y": 272.0,
+                    "tag": "P001",
+                    "casas": 2,
+                    "digitos": 2,
+                    "z": 0.0,
+                    "color": "#000000",
+                    "font": "Microsoft Sans Serif,12,-1,5,50,0,0,0,0,0",
+                    "id": 2203947085712,
+                    "lei": "valor = random.uniform(0, 9999)",
+                    "controle": {
+                        "variavel_controlada": false,
+                        "Kp": 1.0,
+                        "Ki": 0.0,
+                        "Kd": 0.0,
+                        "modo": "MAN",
+                        "sp_tracking": false,
+                        "pv_tag": "P001.pv",
+                        "sp_tag": "P001.sp",
+                        "mv_tag": "P001.mv",
+                        "fonte_cascata": ""
+                    }
+                },
+                {
+                    "type": "variavel",
+                    "x": 761.0,
+                    "y": 253.0,
+                    "tag": "P002",
+                    "casas": 2,
+                    "digitos": 4,
+                    "z": 0.0,
+                    "color": "#000000",
+                    "font": "Microsoft Sans Serif,12,-1,5,50,0,0,0,0,0",
+                    "id": 2203947084992,
+                    "lei": "valor = random.uniform(0, 9999)",
+                    "controle": {
+                        "variavel_controlada": false,
+                        "Kp": 1.0,
+                        "Ki": 0.0,
+                        "Kd": 0.0,
+                        "modo": "MAN",
+                        "sp_tracking": false,
+                        "pv_tag": "P002.pv",
+                        "sp_tag": "P002.sp",
+                        "mv_tag": "P002.mv",
+                        "fonte_cascata": ""
+                    }
+                }
+            ],
+            "canvas_size": {
+                "largura": 1920.0,
+                "altura": 1080.0
+            },
+            "cor_fundo": "#c0c0c0"
+        }
+    ]
+}

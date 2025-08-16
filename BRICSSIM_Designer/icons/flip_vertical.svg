@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Generator: Adobe Illustrator 18.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+
+<!-- License: CC0. Made by SVG Repo: https://www.svgrepo.com/svg/168422/flip -->
+
+<svg
+   version="1.1"
+   id="Capa_1"
+   x="0px"
+   y="0px"
+   viewBox="0 0 60.001 60.001"
+   style="enable-background:new 0 0 60.001 60.001;"
+   xml:space="preserve"
+   sodipodi:docname="flip_vertical.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+   id="defs2" /><sodipodi:namedview
+   id="namedview2"
+   pagecolor="#505050"
+   bordercolor="#eeeeee"
+   borderopacity="1"
+   inkscape:showpageshadow="0"
+   inkscape:pageopacity="0"
+   inkscape:pagecheckerboard="0"
+   inkscape:deskcolor="#505050"
+   inkscape:zoom="10.028964"
+   inkscape:cx="24.57881"
+   inkscape:cy="26.872167"
+   inkscape:window-width="1920"
+   inkscape:window-height="1111"
+   inkscape:window-x="-9"
+   inkscape:window-y="-9"
+   inkscape:window-maximized="1"
+   inkscape:current-layer="Capa_1" />
+<g
+   id="g2"
+   transform="rotate(90,30.00021,30.000796)">
+	<g
+   id="g1">
+		<polygon
+   style="fill:#26b99a"
+   points="27.5,59.001 27.5,1.001 1.5,59.001 "
+   id="polygon1" />
+		<path
+   style="fill:#26b99a"
+   d="M 27.5,60.001 H 1.5 C 1.161,60.001 0.845,59.829 0.661,59.545 0.477,59.26 0.449,58.901 0.588,58.592 l 26,-58 c 0.193,-0.431 0.662,-0.67 1.122,-0.568 0.461,0.098 0.79,0.505 0.79,0.977 v 58 c 0,0.552 -0.447,1 -1,1 z m -24.456,-2 H 26.5 V 5.677 Z"
+   id="path1" />
+	</g>
+	<polygon
+   style="fill:#7383bf"
+   points="33.5,59.001 59.5,59.001 33.5,1.001 "
+   id="polygon2" />
+</g>
+</svg>

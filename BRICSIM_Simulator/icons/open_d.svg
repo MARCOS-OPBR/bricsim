@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- License: PD. Made by puppylinux: https://github.com/puppylinux-woof-CE/puppy_icon_theme -->
+
+<svg
+   width="800px"
+   height="800px"
+   viewBox="0 0 100 100"
+   version="1.1"
+   id="svg2"
+   sodipodi:docname="open_d.svg"
+   inkscape:version="1.4.2 (f4327f4, 2025-05-13)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="namedview2"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#505050"
+     inkscape:zoom="1.06375"
+     inkscape:cx="400"
+     inkscape:cy="400"
+     inkscape:window-width="1920"
+     inkscape:window-height="1111"
+     inkscape:window-x="-9"
+     inkscape:window-y="-9"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <path
+     style="fill:#46dc88;stroke:#222222;stroke-width:2;fill-opacity:1"
+     d="m 2,88 c 0,-1 0,-63 0,-63 0,0 -0.6,-5 4.4,-5 -1,0 5.6,0 5.6,0 l 0,-6 c 0,0 0,-3 3,-3 l 17,0 c 0,0 3,0 3,3 l 0,6 43,0 c 0,0 4,0 4,4 l 0,64 z"
+     id="path1" />
+  <path
+     style="fill:#46dc88;stroke:#222222;stroke-width:2;fill-opacity:0.80000001"
+     d="M 2,88 17,54 c 0,0 1,-5 9,-5 11,0 65,0 65,0 0,0 9,0 7,5 -2,5 -14,34 -14,34 z"
+     id="path2" />
+</svg>
