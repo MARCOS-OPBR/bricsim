@@ -723,6 +723,9 @@ class SvgObjectItem(QGraphicsItemGroup):
         return grupo
 
     def path_to_svg_d(self, qpath: QPainterPath) -> str:
+        from typing import Optional
+        path_item: Optional[object] = path_item if "path_item" in locals() else None  # noqa: F821
+        
         if qpath.data(1) is None:
             d = self.path_to_svg_d(path_item.path())
             path_item.setData(1, d)

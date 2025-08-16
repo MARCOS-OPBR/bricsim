@@ -1,63 +1,90 @@
 import json
-import math
-import os
 import random
-import re
+import os
 import sys
-
-import control
+import math
 import numpy as np
+import control
 import scipy.signal as signal
-from controle import aplicar_controle_PID
-from faceplate import open_faceplate
-from PyQt5.QtCore import QPointF, QRectF, Qt, QTimer
-from PyQt5.QtGui import QBrush, QColor, QCursor, QFont, QPainter, QPen
-from PyQt5.QtWidgets import (
-    QCheckBox,
-    QColorDialog,
-    QComboBox,
-    QDialog,
-    QDoubleSpinBox,
-    QFormLayout,
-    QGraphicsItem,
-    QGraphicsRectItem,
-    QGraphicsScene,
-    QGraphicsView,
-    QGridLayout,
-    QGroupBox,
-    QHBoxLayout,
-    QInputDialog,
-    QLabel,
-    QLineEdit,
-    QListWidget,
-    QListWidgetItem,
-    QMenu,
-    QMessageBox,
-    QPlainTextEdit,
-    QPushButton,
-    QSplitter,
-    QStyleOptionGraphicsItem,
-    QTabWidget,
-    QVBoxLayout,
-    QWidget,
-)
-from singleton import VariaveisGlobais
+import re
 from trends import open_trends
+from faceplate import open_faceplate
+from controle import aplicar_controle_PID
 
+
+from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene,QDialog,QVBoxLayout,QLabel,QPushButton,
+                             QDoubleSpinBox, QMessageBox,QLineEdit,QHBoxLayout,QComboBox,QCheckBox,
+                             QPlainTextEdit,QTabWidget,QWidget,QGraphicsRectItem,QStyleOptionGraphicsItem,
+                             QColorDialog,QMenu,QGroupBox,QListWidget,QGraphicsItem,QGridLayout,QInputDialog,
+                             QSplitter,QListWidgetItem,QFormLayout
+                             )
+ 
+from PyQt5.QtCore import Qt, QTimer, QPointF,QRectF 
+from PyQt5.QtGui import QColor, QFont,QPainter,QBrush,QPen,QCursor
+
+# compat durante a migração
+try:
+    from BRICSIM_Simulator.faceplate import Faceplate
+except Exception:  # fallback futuro, quando mover para simulator/ui/
+    try:
+        from simulator.ui.faceplate import Faceplate  # type: ignore
+    except Exception:
+        Faceplate = None  # type: ignore[assignment]
+
+
+
+
+from singleton import VariaveisGlobais
 # 🔹 Garante que a pasta do Designer está no caminho de import
-designer_path = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "BRICSSIM_designer")
-)
+designer_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "BRICSSIM_designer"))
 if designer_path not in sys.path:
     sys.path.append(designer_path)
 # 🔹 Importa as classes direto do Designer
 from canvas import EditableLine, EditablePolyline, EditableVariable, SvgObjectItem
-from functions import (
-    carregar_design,
-    carregar_modelo,
-    carregar_simulacao,
-    salvar_simulacao,
-)
+
+from functions import salvar_simulacao, carregar_design, carregar_simulacao, carregar_modelo
+
+def _fill_form(self, it):
+    if not it:
+        self.ed_nome.clear(); self.ed_lhs.clear(); self.txt_rhs.clear(); self.chk_on.setChecked(True); return
+    node = it.data(0, Qt.UserRole) or {}
+    t = node.get("type","equation")
+    self.ed_nome.setText(node.get("name",""))
+    self.cmb_tipo_item.setCurrentText(t)
+    is_folder   = (t == "folder")
+    is_constant = (t == "constant")
+    # para constant: usa 'nome' como símbolo e só RHS
+    self.ed_lhs.setEnabled(not (is_folder or is_constant))
+    self.txt_rhs.setEnabled(not is_folder)
+    self.chk_on.setEnabled(not is_folder)
+    self.ed_lhs.setText("" if (is_folder or is_constant) else node.get("lhs",""))
+    self.txt_rhs.setPlainText(node.get("rhs",""))
+    self.chk_on.setChecked(True if is_folder else bool(node.get("enabled", True)))
+
+import re
+ARROW_RE = re.compile(r'(?s)^(.*?)(?:=>|->)\s*([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)?)\s*$')
+
+def infer_lhs_rhs(rhs_text: str, lhs_text: str = ""):
+    s = (rhs_text or "").strip()
+    s = s.split("#", 1)[0].rstrip()
+    if not lhs_text:
+        m = ARROW_RE.match(s)
+        if m:
+            body, dest = m.group(1).strip(), m.group(2).strip()
+            if "." not in dest:
+                dest += ".pv"
+            return dest, body
+    return lhs_text, (rhs_text or "")
+
+def _eq_apply_form(idx):
+    ...
+    lhs  = self.ed_lhs.text().strip()
+    rhs  = self.txt_rhs.toPlainText().strip()
+    lhs, rhs = infer_lhs_rhs(rhs, lhs)   # <<< aceita "expr -> TAG.prop"
+    if not rhs or (not lhs and self.cmb_tipo_item.currentText()=="equation"):
+        QMessageBox.warning(self,"Campos obrigatórios","Use 'expressão -> DESTINO' ou preencha LHS e RHS.")
+        return
+    ...
 
 
 def _capturar_baseline(item):
@@ -68,35 +95,27 @@ def _capturar_baseline(item):
         item._base_text = item.toPlainText()
         item._base_color = item.defaultTextColor()
     if hasattr(item, "pen"):
-        # try: item._base_pen = item.pen()
-        # except: item._base_pen = None
+       # try: item._base_pen = item.pen()
+        #except: item._base_pen = None
         pass
     if hasattr(item, "brush"):
-        try:
-            item._base_brush = item.brush()
-        except:
-            item._base_brush = None
+        try: item._base_brush = item.brush()
+        except: item._base_brush = None
     item._base_opacity = item.opacity()
 
     # filhos (SVG decomposto)
     try:
         for ch in getattr(item, "childItems", lambda: [])():
             if hasattr(ch, "pen"):
-                try:
-                    ch._base_pen = ch.pen()
-                except:
-                    ch._base_pen = None
+                try: ch._base_pen = ch.pen()
+                except: ch._base_pen = None
             if hasattr(ch, "brush"):
-                try:
-                    ch._base_brush = ch.brush()
-                except:
-                    ch._base_brush = None
+                try: ch._base_brush = ch.brush()
+                except: ch._base_brush = None
     except Exception:
         pass
 
     item._baseline_ok = True
-
-
 # --- Apagar tudo que começa com prefixo no VariaveisGlobais (inclui históricos, se existirem) ---
 def _vg_del_prefix(vg, prefix: str):
     removed = 0
@@ -106,8 +125,7 @@ def _vg_del_prefix(vg, prefix: str):
         if isinstance(d, dict):
             for k in list(d.keys()):
                 if isinstance(k, str) and k.startswith(prefix):
-                    del d[k]
-                    removed += 1
+                    del d[k]; removed += 1
     # históricos (se houver)
     for attr in ("_hist", "hist", "_history", "history"):
         h = getattr(vg, attr, None)
@@ -116,7 +134,6 @@ def _vg_del_prefix(vg, prefix: str):
                 if isinstance(k, str) and k.startswith(prefix):
                     del h[k]
     return removed
-
 
 # === HELPER UNIVERSAL ===
 def ensure_analog_tag(vg, base_tag: str, tipo_padrao="Temperatura"):
@@ -147,11 +164,9 @@ def ensure_analog_tag(vg, base_tag: str, tipo_padrao="Temperatura"):
     conf.setdefault("acao", "direta")
     vg.set(f"{base}.controle", conf)
 
-
 def _purge_tag(vg, tag: str):
     """Remove TUDO da tag: variáveis, mapas, controle, alarmes, históricos, IQ, Grafcet."""
-    if not tag:
-        return
+    if not tag: return
     # 1) chaves com prefixo TAG.
     _vg_del_prefix(vg, f"{tag}.")
     # 2) grafcet: remove lógicas da tag e steps
@@ -159,8 +174,7 @@ def _purge_tag(vg, tag: str):
     changed = False
     for nome in list(log.keys()):
         if nome == tag or nome.startswith(f"{tag}_"):
-            log.pop(nome, None)
-            changed = True
+            log.pop(nome, None); changed = True
             _vg_del_prefix(vg, f"grafcet.{nome}.")
             try:  # alguns runtimes guardam step fora do dict
                 _vg_del_prefix(vg, f"grafcet.{nome}.step")
@@ -176,13 +190,12 @@ def _purge_tag(vg, tag: str):
         if base == tag:
             continue  # descarta bloco inteiro
         eqs = []
-        for ln in b.get("equacoes", []) or []:
+        for ln in (b.get("equacoes", []) or []):
             lhs = ln.split("=", 1)[0].strip() if "=" in ln else ""
             if lhs.startswith(f"{tag}."):
                 continue
             eqs.append(ln)
-        b = dict(b)
-        b["equacoes"] = eqs
+        b = dict(b); b["equacoes"] = eqs
         iq2.append(b)
     vg.set("iq", iq2)
 
@@ -190,22 +203,17 @@ def _purge_tag(vg, tag: str):
 def _iq_tokens(expr: str):
     return set(re.findall(r"\b[A-Za-z_][A-Za-z0-9_\.]*\b", expr))
 
-
 def _iq_to_py(expr: str):
     s = expr
     s = s.replace("&&", " and ").replace("&", " and ")
     s = s.replace("||", " or ").replace("|", " or ")
     s = s.replace("!", " not ")
-    s = s.replace("^", " != ")  # xor
+    s = s.replace("^", " != ")   # xor
     return s
 
-
 def _as_bool(v):
-    try:
-        return bool(int(v))
-    except Exception:
-        return bool(v)
-
+    try: return bool(int(v))
+    except Exception: return bool(v)
 
 # === IQ: avaliação numérica/booleana com ADC/DAC ===
 def _eval_iq_equation_numeric(lhs_key: str, rhs_expr: str, base: str, prev_cache: dict):
@@ -225,42 +233,23 @@ def _eval_iq_equation_numeric(lhs_key: str, rhs_expr: str, base: str, prev_cache
         out, i, n, in_s, in_d = [], 0, len(text), False, False
         while i < n:
             c = text[i]
-            if c == "'" and not in_d:
-                in_s = not in_s
-                out.append(c)
-                i += 1
-                continue
-            if c == '"' and not in_s:
-                in_d = not in_d
-                out.append(c)
-                i += 1
-                continue
+            if c == "'" and not in_d: in_s = not in_s; out.append(c); i += 1; continue
+            if c == '"' and not in_s: in_d = not in_d; out.append(c); i += 1; continue
             if in_s or in_d:
-                out.append(c)
-                i += 1
-                continue
-            m = re.match(r"([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)", text[i:])
+                out.append(c); i += 1; continue
+            m = re.match(r'([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)', text[i:])
             if m:
                 tok = m.group(1)
                 out.append(f'G("{tok}")')
                 i += len(tok)
             else:
-                out.append(c)
-                i += 1
-        return "".join(out)
+                out.append(c); i += 1
+        return ''.join(out)
 
     rhs_py = _wrap_dot_tokens(s)
 
     # --------- 2) Pré-carrega nomes "locais" da base no ambiente (PV0..PV15, RUN, SP, MV, perm/mv_iq/mv_final) ---------
-    base_names = [f"PV{i}" for i in range(16)] + [
-        "RUN",
-        "SP",
-        "MV",
-        "perm_ok",
-        "mv_iq",
-        "mv_final",
-        "sp_eff",
-    ]
+    base_names = [f"PV{i}" for i in range(16)] + ["RUN","SP","MV","perm_ok","mv_iq","mv_final","sp_eff"]
     env = {"True": 1, "False": 0, "dt": 1.0}
 
     def G(key, default=0):
@@ -273,37 +262,24 @@ def _eval_iq_equation_numeric(lhs_key: str, rhs_expr: str, base: str, prev_cache
 
         v = vg.get(key, default)
         if isinstance(v, str):
-            try:
-                return float(v.strip())
-            except Exception:
-                return default
+            try: return float(v.strip())
+            except Exception: return default
         return v
 
     def BOOL(x):
-        try:
-            return 1.0 if bool(int(x or 0)) else 0.0
-        except Exception:
-            return 1.0 if bool(x) else 0.0
+        try: return 1.0 if bool(int(x or 0)) else 0.0
+        except Exception: return 1.0 if bool(x) else 0.0
+    def SEL(cond,a,b): return a if BOOL(cond) >= 0.5 else b
+    def DAC(cond,on_val,off_val): return on_val if BOOL(cond) >= 0.5 else off_val
+    def RAMP(prev,target,dt_local,tau):
+        alpha = dt_local/(tau+dt_local) if (tau+dt_local)!=0 else 1.0
+        try: pf=float(prev)
+        except: pf=0.0
+        try: tf=float(target)
+        except: tf=pf
+        return pf + alpha*(tf-pf)
 
-    def SEL(cond, a, b):
-        return a if BOOL(cond) >= 0.5 else b
-
-    def DAC(cond, on_val, off_val):
-        return on_val if BOOL(cond) >= 0.5 else off_val
-
-    def RAMP(prev, target, dt_local, tau):
-        alpha = dt_local / (tau + dt_local) if (tau + dt_local) != 0 else 1.0
-        try:
-            pf = float(prev)
-        except:
-            pf = 0.0
-        try:
-            tf = float(target)
-        except:
-            tf = pf
-        return pf + alpha * (tf - pf)
-
-    env.update({"G": G, "BOOL": BOOL, "SEL": SEL, "DAC": DAC, "RAMP": RAMP})
+    env.update({"G":G,"BOOL":BOOL,"SEL":SEL,"DAC":DAC,"RAMP":RAMP})
 
     # torna acessíveis PV0, PV1, RUN etc. SEM ponto, qualificados pela base, se houver
     if base:
@@ -325,6 +301,7 @@ def _eval_iq_equation_numeric(lhs_key: str, rhs_expr: str, base: str, prev_cache
         return 1 if bool(val) else 0
 
 
+
 def _tick_iq(canvas, prev_cache: dict):
     """
     Espera vg['iq'] = [
@@ -341,8 +318,8 @@ def _tick_iq(canvas, prev_cache: dict):
     import re
 
     for bloco in blocos:
-        base = str(bloco.get("base", "") or "")
-        for ln in bloco.get("equacoes", []) or []:
+        base = str(bloco.get("base","") or "")
+        for ln in (bloco.get("equacoes", []) or []):
             line = str(ln).strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -359,7 +336,7 @@ def _tick_iq(canvas, prev_cache: dict):
 
             # decide tipo de escrita: digital (PVx ou .perm_ok) vs analógica
             is_digital = bool(re.match(r".*\.PV\d+$", lhs))
-            is_perm = lhs.endswith(".perm_ok")
+            is_perm    = lhs.endswith(".perm_ok")
 
             if is_digital or is_perm:
                 out = 1 if (1 if int(bool(val)) else 0) else 0
@@ -374,17 +351,17 @@ def _tick_iq(canvas, prev_cache: dict):
             vg.set(lhs, out)
             wrote.add(lhs)
 
+
     hist = prev_cache.get(lhs, [])
     if re.match(r".*\.PV\d+$", lhs):
         cur = 1 if int(vg.get(lhs, 0) or 0) else 0
         prev_cache[lhs] = (hist + [cur])[-3:]
     else:
         # salva o valor numérico para self-hold de variáveis como RUN
-        try:
-            cur = float(vg.get(lhs, 0) or 0)
-        except:
-            cur = 0.0
+        try: cur = float(vg.get(lhs, 0) or 0)
+        except: cur = 0.0
         prev_cache[lhs] = (hist + [cur])[-3:]
+
 
     return wrote
 
@@ -407,9 +384,7 @@ def _ensure_iq_tag_exists(canvas, lhs_key: str):
             for i in range(6):
                 vg.set(f"{base}.PV{i}", int(vg.get(f"{base}.PV{i}", 0) or 0))
 
-
 import re
-
 
 def _iq_eval_and_set(vg, lhs: str, rhs_expr: str, dt: float = 1.0):
     """
@@ -420,28 +395,22 @@ def _iq_eval_and_set(vg, lhs: str, rhs_expr: str, dt: float = 1.0):
       - Se lhs tem ponto, grava direto na tag (vg.set("TAG.xxx", valor))
       - Integra com árbitro via .mv_final / .mv_iq / .perm_ok
     """
-
     # ---------- helpers usados dentro do eval ----------
     def G(key, default=0):
         try:
             v = vg.get(key, default)
             if isinstance(v, str):
                 s = v.strip()
-                if s == "":
-                    return default
-                try:
-                    return float(s)
-                except:
-                    return default
+                if s == "": return default
+                try: return float(s)
+                except: return default
             return v
         except:
             return default
 
     def BOOL(x):
-        try:
-            return 1.0 if bool(int(x or 0)) else 0.0
-        except:
-            return 1.0 if bool(x) else 0.0
+        try:    return 1.0 if bool(int(x or 0)) else 0.0
+        except: return 1.0 if bool(x) else 0.0
 
     def SEL(cond, a, b):  # ternário numérico
         return a if BOOL(cond) >= 0.5 else b
@@ -451,32 +420,22 @@ def _iq_eval_and_set(vg, lhs: str, rhs_expr: str, dt: float = 1.0):
 
     def RAMP(prev, target, dt_local, tau):
         alpha = dt_local / (tau + dt_local) if (tau + dt_local) != 0 else 1.0
-        try:
-            prev_f = float(prev)
-        except:
-            prev_f = 0.0
-        try:
-            tgt_f = float(target)
-        except:
-            tgt_f = prev_f
+        try: prev_f = float(prev)
+        except: prev_f = 0.0
+        try: tgt_f = float(target)
+        except: tgt_f = prev_f
         return prev_f + alpha * (tgt_f - prev_f)
 
     env = {
-        "G": G,
-        "BOOL": BOOL,
-        "SEL": SEL,
-        "DAC": DAC,
-        "RAMP": RAMP,
-        "dt": dt,
-        "True": 1,
-        "False": 0,
+        "G": G, "BOOL": BOOL, "SEL": SEL, "DAC": DAC, "RAMP": RAMP,
+        "dt": dt, "True": 1, "False": 0,
     }
 
     # ---------- pré-processamento do RHS ----------
     rhs = str(rhs_expr)
 
     # troca '!' por ' not ' (sem quebrar '!=')
-    rhs = re.sub(r"!\s*(?!=)", " not ", rhs)
+    rhs = re.sub(r'!\s*(?!=)', ' not ', rhs)
 
     # envolve tokens com ponto em G("...") — ex.: TI001.pv  -> G("TI001.pv")
     # evita capturar números com ponto e já ignora tokens dentro de aspas
@@ -485,31 +444,20 @@ def _iq_eval_and_set(vg, lhs: str, rhs_expr: str, dt: float = 1.0):
         in_s, in_d = False, False
         while i < n:
             c = text[i]
-            if c == "'" and not in_d:
-                in_s = not in_s
-                out.append(c)
-                i += 1
-                continue
-            if c == '"' and not in_s:
-                in_d = not in_d
-                out.append(c)
-                i += 1
-                continue
+            if c == "'" and not in_d: in_s = not in_s; out.append(c); i += 1; continue
+            if c == '"' and not in_s: in_d = not in_d; out.append(c); i += 1; continue
             if in_s or in_d:
-                out.append(c)
-                i += 1
-                continue
+                out.append(c); i += 1; continue
             # tenta capturar token com ponto do tipo NAME.NAME[.NAME]*
-            m = re.match(r"([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)", text[i:])
+            m = re.match(r'([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)', text[i:])
             if m:
                 token = m.group(1)
                 # não embrulhar chamadas (ex.: G("x").alguma_coisa) já com aspas
                 out.append(f'G("{token}")')
                 i += len(token)
             else:
-                out.append(c)
-                i += 1
-        return "".join(out)
+                out.append(c); i += 1
+        return ''.join(out)
 
     rhs_py = _wrap_tokens(rhs)
 
@@ -524,257 +472,80 @@ def _iq_eval_and_set(vg, lhs: str, rhs_expr: str, dt: float = 1.0):
     if isinstance(val, bool):
         out = 1.0 if val else 0.0
     else:
-        try:
-            out = float(val)
-        except:
-            out = 1.0 if bool(val) else 0.0
+        try: out = float(val)
+        except: out = 1.0 if bool(val) else 0.0
 
     # ---------- grava no VariaveisGlobais ----------
     lhs = lhs.strip()
     vg.set(lhs, out)  # com ou sem ponto o vg aceita chave "lhs" como string
 
+class _TagProxy:
+    __slots__ = ("_base", "_vg")
+    def __init__(self, base, vg): self._base = base; self._vg = vg
+    def __getattr__(self, prop):
+        key = f"{self._base}.{prop}"
+        return self._vg.get(key, 0.0)  # leitura direta
+    # opcional: suporte a 'prev' como atalho
+    @property
+    def prev(self):  # lê pv anterior (atalho: TAG.prev ≡ passado("TAG.pv",1,0))
+        return self._vg.hist(f"{self._base}.pv")[-2] if len(self._vg.hist(f"{self._base}.pv"))>=2 else 0.0
 
-def _tick_eqs_analogicas(canvas, dt=0.2):
-    import builtins
-    import math
-    import random
-    import uuid
-
-    import numpy as np
-    from singleton import VariaveisGlobais
-
-    vg = VariaveisGlobais()
-
-    tree = vg.get("analog.tree", None)
-    flat = vg.get("analog.eq", None)
-
-    # --- MIGRAÇÃO: se não há tree, mas há lista antiga, crie pasta "Importado"
-    if tree is None:
-        children = []
-        if isinstance(flat, list) and flat:
-
-            def _to_entry(s):
-                if isinstance(s, dict) and "lhs" in s:
-                    return {
-                        "id": str(uuid.uuid4()),
-                        "type": "equation",
-                        "name": s.get("nome", s.get("lhs", "(eq)")),
-                        "lhs": s.get("lhs", ""),
-                        "rhs": s.get("rhs", ""),
-                        "enabled": bool(s.get("habilitado", True)),
-                    }
-                if isinstance(s, str) and "=" in s:
-                    L, R = [p.strip() for p in s.split("=", 1)]
-                    if "." not in L:
-                        L = f"{L}.pv"
-                    return {
-                        "id": str(uuid.uuid4()),
-                        "type": "equation",
-                        "name": L,
-                        "lhs": L,
-                        "rhs": R,
-                        "enabled": True,
-                    }
-                return None
-
-            for s in flat:
-                e = _to_entry(s)
-                if e:
-                    children.append(e)
-        tree = {
-            "root": [
-                {
-                    "id": str(uuid.uuid4()),
-                    "type": "folder",
-                    "name": "Importado",
-                    "children": children,
-                }
-            ]
-        }
-        vg.set("analog.tree", tree)
-
-    # --- achatar a árvore na ordem visual (DFS)
-    def _flatten(nodes, out):
-        for n in nodes or []:
-            if n.get("type") == "equation":
-                if n.get("enabled", True) and n.get("lhs") and n.get("rhs"):
-                    out.append((n.get("name") or n.get("lhs"), n["lhs"], n["rhs"]))
-            elif n.get("type") == "folder":
-                _flatten(n.get("children", []), out)
-
-    eqs = []
-    _flatten((tree or {}).get("root", []), eqs)
-    if not eqs:
-        return set()
-
-    # --- bucketização por dinâmica (usa tipo do .controle da TAG base)
-    ordem = getattr(
-        canvas, "TIPO_ORDEM", ["Temperatura", "Nível", "Pressão", "Vazão", "logica"]
-    )
-
-    def _tipo(tag_base: str):
-        conf = vg.get(f"{tag_base}.controle", {}) or {}
-        return conf.get("tipo", "Temperatura")
-
-    buckets = {t: [] for t in ordem}
-    outros = []
-
-    pairs = []
-    for nome, lhs, rhs in eqs:
-        L = (lhs or "").strip()
-        R = (rhs or "").strip()
-        if not L or not R:
-            continue
-        if "." not in L:
-            L = f"{L}.pv"
-        base = L.split(".", 1)[0]
-        t = _tipo(base)
-        rec = (L, R, nome)
-        pairs.append(rec)
-        (buckets[t] if t in buckets else outros).append(rec)
-
-    # --- ambiente seguro
-    def _env_for(lhs_key: str):
-        def G(key, default=0.0):
-            if key == lhs_key:  # auto-dependência pega valor anterior
-                h = vg.hist(lhs_key)
-                if h:
-                    try:
-                        return float(h[-1])
-                    except:
-                        return h[-1]
-            v = vg.get(key, default)
-            try:
-                return float(v)
-            except:
-                return v
-
-        def passado(key, k=1, default=0.0):
-            try:
-                return float(vg.passado(key, int(k), default))
-            except:
-                return default
-
-        def CLAMP(x, a, b):
-            try:
-                x = float(x)
-                a = float(a)
-                b = float(b)
-                if a > b:
-                    a, b = b, a
-                return a if x < a else (b if x > b else x)
-            except:
-                return x
-
-        import random as _rnd
-
-        def NOISE(amp=1.0, mode="uniform"):
-            """
-            Ruído de média ~0.
-            - mode="uniform": U[-amp, +amp]
-            - mode="gauss":   N(0, amp)  (amp = desvio padrão)
-            """
-            a = float(amp)
-            if mode == "gauss":
-                return _rnd.gauss(0.0, a)
-            return (_rnd.random() * 2.0 - 1.0) * a
-
-        def NOISE_LP(key: str, amp=1.0, tau=3.0):
-            """
-            Ruído 'suave' (passa-baixa) com memória por chave.
-            Ex.: NOISE_LP("AMB", 0.2, 5.0)
-            """
-            st_key = f"_noise.{key}"
-            prev = vg.get(st_key, 0.0)
-            inov = NOISE(amp, "gauss")
-            alpha = float(dt) / (float(tau) + float(dt))
-            val = prev + alpha * (inov - prev)
-            vg.set(st_key, val)
-            return val
-
-        def RAMP(prev, target, dt_local, tau):
-            try:
-                prev = float(prev)
-                target = float(target)
-                dt_local = float(dt_local)
-                tau = float(tau)
-                alpha = dt_local / (tau + dt_local) if (tau + dt_local) != 0 else 1.0
-                return prev + alpha * (target - prev)
-            except:
-                return target
-
-        return {
+class _AutoNS(dict):
+    def __init__(self, vg, dt, scope_consts):
+        super().__init__()
+        self._vg = vg; self._dt = float(dt); self._scope = dict(scope_consts or {})
+        # builtins seguros
+        self.update({
             "__builtins__": None,
-            "math": math,
-            "np": np,
-            "random": random,
-            "min": builtins.min,
-            "max": builtins.max,
-            "abs": builtins.abs,
-            "round": builtins.round,
-            "float": builtins.float,
-            "int": builtins.int,
-            "len": builtins.len,
-            "G": G,
-            "hist": vg.hist,
-            "passado": passado,
-            "atual": vg.atual,
-            "RAMP": RAMP,
-            "CLAMP": CLAMP,
-            "dt": float(dt),
-            "NOISE": NOISE,
-            "NOISE_LP": NOISE_LP,
-        }
+            "math": math, "np": np,
+            "min": min, "max": max, "abs": abs, "round": round, "len": len, "float": float, "int": int,
+            # helpers do motor:
+            "dt": self._dt,
+            "CLAMP": lambda x,a,b: min(max(float(x), float(a)), float(b)),
+            "RAMP":  lambda prev,target,dt_local,tau: float(prev) + (float(dt_local)/(float(tau)+float(dt_local)))*(float(target)-float(prev)),
+            "passado": lambda key,k=1,default=0.0: (self._vg.hist(key)[-1-int(k)] if len(self._vg.hist(key))>int(k) else default),
+            # ruídos:
+            "NOISE": lambda amp=1.0, mode="uniform": (random.gauss(0.0,float(amp)) if mode=="gauss" else ((random.random()*2.0-1.0)*float(amp))),
+        })
+    def __getitem__(self, key):
+        # constantes de escopo primeiro:
+        if key in self._scope: return self._scope[key]
+        # fallback: qualquer símbolo vira um proxy de tag
+        return _TagProxy(key, self._vg)
 
-    wrote = set()
-    prev_flag = vg.usar_buffer
+def _eval_expr(rhs: str, scope_consts: dict):
+    env = _AutoNS(vg, dt, scope_consts)
+    return eval(rhs, env, env)
 
-    for tipo in ordem + (["outros"] if outros else []):
-        lst = buckets.get(tipo, []) if tipo != "outros" else outros
-        if not lst:
-            continue
+def _exec_tree(node, inherited_scope):
+    scope = dict(inherited_scope or {})  # herda pai
 
-        vg.usar_buffer = True
-        vg.buffer.clear()
+    # 1) Avalia constantes do nível
+    for ch in (node.get("children",[]) if node.get("type")=="folder" else []):
+        if (ch.get("type")=="constant") and ch.get("enabled", True):
+            sym = ch.get("name","").strip()
+            if not sym: continue
+            val = _eval_expr(ch.get("rhs","0"), scope)
+            scope[sym] = float(val)  # nome nu
+            # alias 'base.sufixo' se houver ponto no nome:
+            if "." in sym:
+                base, suf = sym.split(".",1)
+                scope.setdefault(suf, float(val))  # ex.: B01A.KSTARV => KSTARV também
 
-        for L, R, _nome in lst:
-            env = _env_for(L)
-            try:
-                val = eval(R, env, {})
-            except Exception:
-                val = vg.get(L, vg.get(L, 0.0))
+    # 2) Equações deste nível
+    for ch in (node.get("children",[]) if node.get("type")=="folder" else []):
+        if (ch.get("type")=="equation") and ch.get("enabled", True):
+            lhs = (ch.get("lhs","") or "").strip()
+            rhs = (ch.get("rhs","") or "").strip()
+            lhs, rhs = infer_lhs_rhs(rhs, lhs)  # aceita "expr -> DESTINO"
+            if not lhs or not rhs: continue
+            val = _eval_expr(rhs, scope)
+            self._aplica_resultado(_lhs_to_var(lhs), float(val))  # sua função existente
 
-            base, campo = L.split(".", 1)
-            if campo in ("pv", "sp"):
-                conf = vg.get(f"{base}.controle", {}) or {}
-                pv_min = conf.get("pv_min")
-                pv_max = conf.get("pv_max")
-                try:
-                    val = float(val)
-                    if pv_min is not None and pv_max is not None:
-                        a, b = (
-                            (pv_min, pv_max) if pv_min <= pv_max else (pv_max, pv_min)
-                        )
-                        val = max(a, min(b, val))
-                except:
-                    pass
-
-            try:
-                val = float(val)
-            except:
-                try:
-                    val = 0.0 if not val else float(val)
-                except:
-                    val = vg.get(L, 0.0)
-
-            vg.set(L, val)
-            wrote.add(L)
-
-        vg.commit_buffer()
-
-    vg.usar_buffer = prev_flag
-    return wrote
-
+    # 3) Recursão em subpastas
+    for ch in (node.get("children",[]) if node.get("type")=="folder" else []):
+        if ch.get("type")=="folder":
+            _exec_tree(ch, scope)
 
 def _dsl_G(key):
     vg = VariaveisGlobais()
@@ -784,11 +555,9 @@ def _dsl_G(key):
     except Exception:
         return 1 if bool(v) else 0
 
-
 def _dsl_W(key, val):
     vg = VariaveisGlobais()
     vg.set(key, 1 if val else 0)
-
 
 def _dsl_passado(cache: dict, key: str, n: int = 1, default: int = 0):
     # usa cache preenchido a cada ciclo do motor
@@ -797,12 +566,9 @@ def _dsl_passado(cache: dict, key: str, n: int = 1, default: int = 0):
         return hist[-n]
     return default
 
-
 def _dsl_STEP(nome_logica: str):
     vg = VariaveisGlobais()
     return vg.get(f"grafcet.{nome_logica}.step", "P0")
-
-
 def _parse_passos(passos_list):
     # "P0: NOME" -> ["P0", ...]; primeiro da lista é o inicial
     ids = []
@@ -811,29 +577,6 @@ def _parse_passos(passos_list):
         if m:
             ids.append(m.group(1))
     return ids
-
-
-def _eval_expr(expr: str, base_tag: str):
-    """
-    Converte 'A && !B || TAG.PV0' em Python e avalia.
-    Tokens sem ponto ganham prefixo base_tag+'.'
-    """
-    if not expr:
-        return False
-    vg = VariaveisGlobais()
-    s = expr.replace("&&", " and ").replace("||", " or ").replace("!", " not ")
-    # mapeia tokens
-    tokens = set(re.findall(r"\b[A-Za-z_][A-Za-z0-9_\.]*\b", s))
-    env = {}
-    for t in tokens:
-        if t in ("and", "or", "not", "True", "False"):
-            continue
-        key = t if "." in t else f"{base_tag}.{t}"
-        env[t] = bool(vg.get(key, 0))
-    try:
-        return bool(eval(s, {"__builtins__": None}, env))
-    except Exception:
-        return False
 
 
 def _tick_grafcets():
@@ -865,8 +608,6 @@ def _tick_grafcets():
             if _eval_expr(expr, base):
                 vg.set(f"grafcet.{nome}.step", para)
                 break  # 1 transição por ciclo
-
-
 def _listar_tags_do_vg(vg, canvas=None):
     tags = set()
     for attr in ("_data", "_store", "store", "data"):
@@ -879,8 +620,7 @@ def _listar_tags_do_vg(vg, canvas=None):
     if canvas is not None and hasattr(canvas, "variaveis"):
         for v in canvas.variaveis:
             t = getattr(v, "tag", None)
-            if t:
-                tags.add(t)
+            if t: tags.add(t)
     # filtra removidas
     out = []
     for t in sorted(tags):
@@ -888,7 +628,6 @@ def _listar_tags_do_vg(vg, canvas=None):
         if tipo != "REM":
             out.append(t)
     return out
-
 
 def _tick_leis_digitais(canvas, prev_cache, skip_keys=None):
     """
@@ -899,7 +638,6 @@ def _tick_leis_digitais(canvas, prev_cache, skip_keys=None):
                  (ex.: porque o IQ já escreveu no ciclo)
     """
     from singleton import VariaveisGlobais
-
     vg = VariaveisGlobais()
 
     # normaliza skip_keys para set imutável de strings
@@ -937,8 +675,7 @@ def _tick_leis_digitais(canvas, prev_cache, skip_keys=None):
 
     # Se você usa buffer no singleton, não mude; o commit acontece fora.
     return touched
-
-
+    
 def _listar_tags_do_vg(vg, canvas=None):
     """
     Retorna lista de TAGs conhecidas no VariaveisGlobais (inclui off-canvas).
@@ -980,7 +717,6 @@ def _listar_tags_do_vg(vg, canvas=None):
             out.append(t)
     return out
 
-
 def renomear_tag_no_vg(vg, old_tag: str, new_tag: str):
     if old_tag == new_tag:
         return
@@ -1003,7 +739,7 @@ def renomear_tag_no_vg(vg, old_tag: str, new_tag: str):
 
     # 3) copiar para new_tag.*
     for k in keys:
-        suffix = k[len(old_tag) :]  # inclui o ponto
+        suffix = k[len(old_tag):]  # inclui o ponto
         vg.set(new_tag + suffix, vg.get(k))
 
     # 4) ajustar leis no digi.map e reforçar tipo
@@ -1032,6 +768,7 @@ def renomear_tag_no_vg(vg, old_tag: str, new_tag: str):
                 pass
 
 
+
 def atualizar_referencias_no_canvas(canvas, old_tag: str, new_tag: str):
     """Atualiza TAG em itens de variável e referências simples (TouchArea target tag)."""
     if not canvas:
@@ -1050,10 +787,7 @@ def atualizar_referencias_no_canvas(canvas, old_tag: str, new_tag: str):
     # 2) atualizar TouchAreas que apontam para a tag (sem import circular)
     for it in list(canvas.scene.items()):
         # identifica TouchArea por "assinatura": tem os atributos target_type/target_value
-        if (
-            getattr(it, "target_type", None) == "tag"
-            and getattr(it, "target_value", None) == old_tag
-        ):
+        if getattr(it, "target_type", None) == "tag" and getattr(it, "target_value", None) == old_tag:
             it.target_value = new_tag
             if hasattr(it, "update"):
                 try:
@@ -1071,7 +805,6 @@ def atualizar_referencias_no_canvas(canvas, old_tag: str, new_tag: str):
                 pass
         try:
             from faceplate import open_faceplate
-
             nw = open_faceplate(new_tag)
             nw.show()
             canvas.faceplates_abertos[new_tag] = nw
@@ -1085,70 +818,17 @@ def _ensure_digital_defaults(vg, tag):
     if tipo != "DIG":
         vg.set(f"{tag}.tipo", "DIG")
     if vg.get(f"{tag}.digi.map", None) is None:
-        vg.set(
-            f"{tag}.digi.map",
-            {
-                "PV0": {
-                    "text0": "LIGA",
-                    "text1": "LIGA",
-                    "visible": True,
-                    "law": "",
-                    "pulse": True,
-                    "confirm": True,
-                },
-                "PV1": {
-                    "text0": "DESLIGA",
-                    "text1": "DESLIGA",
-                    "visible": True,
-                    "law": "",
-                    "pulse": True,
-                    "confirm": True,
-                },
-                "PV2": {
-                    "text0": "...",
-                    "text1": "...",
-                    "visible": False,
-                    "law": "",
-                    "pulse": False,
-                    "confirm": True,
-                },
-                "PV3": {
-                    "text0": "...",
-                    "text1": "...",
-                    "visible": False,
-                    "law": "",
-                    "pulse": False,
-                    "confirm": True,
-                },
-                "PV4": {
-                    "text0": "...",
-                    "text1": "...",
-                    "visible": False,
-                    "law": "",
-                    "pulse": False,
-                    "confirm": True,
-                },
-                "PV5": {
-                    "text0": "PARADO",
-                    "text1": "OPERANDO",
-                    "visible": True,
-                    "law": "",
-                    "pulse": False,
-                    "confirm": True,
-                },
-            },
-        )
-
+        vg.set(f"{tag}.digi.map", {
+            "PV0": {"text0": "LIGA", "text1": "LIGA", "visible": True, "law": "", "pulse": True, "confirm": True},
+            "PV1": {"text0": "DESLIGA", "text1": "DESLIGA", "visible": True, "law": "", "pulse": True, "confirm": True},
+            "PV2": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+            "PV3": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+            "PV4": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+            "PV5": {"text0": "PARADO", "text1": "OPERANDO", "visible": True, "law": "", "pulse": False, "confirm": True}
+        })
 
 class TouchAreaItem(QGraphicsRectItem):
-    def __init__(
-        self,
-        main_window,
-        rect=QRectF(0, 0, 80, 80),
-        target_type="tag",
-        target_value="",
-        border_color=QColor("red"),
-    ):
+    def __init__(self, main_window, rect=QRectF(0, 0, 80, 80), target_type="tag", target_value="", border_color=QColor("red")):
         super().__init__(rect)
         self.main_window = main_window
         self.target_type = target_type
@@ -1160,22 +840,26 @@ class TouchAreaItem(QGraphicsRectItem):
 
         # Movível e redimensionável
         self.setFlags(
-            self.ItemIsSelectable | self.ItemIsMovable | self.ItemSendsGeometryChanges
+            self.ItemIsSelectable |
+            self.ItemIsMovable |
+            self.ItemSendsGeometryChanges
         )
 
         self.setAcceptHoverEvents(True)
         self.setZValue(999999)
 
+
+
     def to_dict(self):
         return {
             "type": "touch_area",
             "x": self.pos().x(),
-            "y": self.pos().y(),
+            "y": self.pos().y(),    
             "w": self.rect().width(),
             "h": self.rect().height(),
             "target_type": self.target_type,
             "target_value": self.target_value,
-            "border_color": self.border_color.name(),
+            "border_color": self.border_color.name()
         }
 
     @staticmethod
@@ -1185,7 +869,7 @@ class TouchAreaItem(QGraphicsRectItem):
             QRectF(0, 0, data.get("w", 80), data.get("h", 80)),
             target_type=data.get("target_type", "tag"),
             target_value=data.get("target_value", ""),
-            border_color=QColor(data.get("border_color", "#ff0000")),
+            border_color=QColor(data.get("border_color", "#ff0000"))
         )
         item.setPos(data.get("x", 0), data.get("y", 0))
         return item
@@ -1199,7 +883,6 @@ class TouchAreaItem(QGraphicsRectItem):
         if not self.main_window.modo_modelo:
             self.update()
         super().hoverLeaveEvent(event)
-
     def mousePressEvent(self, event):
         if self.target_type == "tag" and not self.main_window.modo_modelo:
             for var in self.main_window.tab_widget.currentWidget().variaveis:
@@ -1219,31 +902,25 @@ class TouchAreaItem(QGraphicsRectItem):
         if color.isValid():
             self.border_color = color
 
-    def paint(
-        self,
-        painter: QPainter,
-        option: QStyleOptionGraphicsItem,
-        widget: QWidget = None,
-    ):
-        modo_modelo = getattr(self.main_window, "modo_modelo", False)
+    def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: QWidget = None):
+            modo_modelo = getattr(self.main_window, "modo_modelo", False)
 
-        painter.setBrush(Qt.NoBrush)  # sempre transparente
+            painter.setBrush(Qt.NoBrush)  # sempre transparente
 
-        if modo_modelo:
-            painter.setPen(QPen(self.border_color, 2, Qt.SolidLine))
-            painter.drawRect(self.rect())
-            painter.drawText(self.rect(), Qt.AlignCenter, "🖱")
-        else:
-            if self.isUnderMouse():
+            if modo_modelo:
                 painter.setPen(QPen(self.border_color, 2, Qt.SolidLine))
                 painter.drawRect(self.rect())
-
+                painter.drawText(self.rect(), Qt.AlignCenter, "🖱")
+            else:
+                if self.isUnderMouse():
+                    painter.setPen(QPen(self.border_color, 2, Qt.SolidLine))
+                    painter.drawRect(self.rect())
+                    
     def update_flags(self):
         if getattr(self.main_window, "modo_modelo", False):
             self.setFlags(self.ItemIsSelectable | self.ItemIsMovable)
         else:
             self.setFlags(self.ItemIsSelectable)  # não movível no modo simulação
-
 
 class AlarmesDialog(QDialog):
     def __init__(self, tag="", alarmes=None, parent=None):
@@ -1278,22 +955,11 @@ class AlarmesDialog(QDialog):
         layout.addWidget(btn_ok)
 
     def get_config(self):
-        return self.tag_input.text(), {
-            nome: spin.value() for nome, spin in self.inputs.items()
-        }
+        return self.tag_input.text(), {nome: spin.value() for nome, spin in self.inputs.items()}
 
 
 class ConfigVariavelDialog(QDialog):
-    def __init__(
-        self,
-        tag="",
-        alarmes=None,
-        lei="",
-        controle=None,
-        variaveis_existentes=None,
-        mods=None,
-        parent=None,
-    ):
+    def __init__(self, tag="", alarmes=None, lei="", controle=None, variaveis_existentes=None, mods=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Configuração da Variável")
         self.resize(400, 400)
@@ -1303,6 +969,7 @@ class ConfigVariavelDialog(QDialog):
         self.lei = lei or ""
         self.controle = controle or {}
         self.variaveis_existentes = variaveis_existentes or []
+        
 
         # carregar mods já existentes (quando reabrir o editor)
         existentes = {}
@@ -1333,27 +1000,24 @@ class ConfigVariavelDialog(QDialog):
             geral_layout.addWidget(QLabel(f"{nome}:"))
             spin = QDoubleSpinBox()
             spin.setRange(-1e9, 1e9)
-            spin.setSpecialValueText("—")
+            spin.setSpecialValueText("—") 
             spin.setMinimum(-1e9)
             if self.alarmes.get(nome) is None:
-                spin.setValue(spin.minimum())
+                spin.setValue(spin.minimum()    )
             else:
                 spin.setValue(float(self.alarmes[nome]))
-
+                
             geral_layout.addWidget(spin)
             self.alarm_inputs[nome] = spin
         # === Faixa de engenharia (PV) ===
         geral_layout.addWidget(QLabel("Faixa PV (min / max):"))
         row_range = QHBoxLayout()
-        self.pv_min_input = QDoubleSpinBox()
-        self.pv_min_input.setRange(-1e9, 1e9)
-        self.pv_max_input = QDoubleSpinBox()
-        self.pv_max_input.setRange(-1e9, 1e9)
+        self.pv_min_input = QDoubleSpinBox(); self.pv_min_input.setRange(-1e9, 1e9)
+        self.pv_max_input = QDoubleSpinBox(); self.pv_max_input.setRange(-1e9, 1e9)
         # valores atuais (se já existirem no controle)
         self.pv_min_input.setValue(self.controle.get("pv_min", 0.0))
         self.pv_max_input.setValue(self.controle.get("pv_max", 100.0))
-        row_range.addWidget(self.pv_min_input)
-        row_range.addWidget(self.pv_max_input)
+        row_range.addWidget(self.pv_min_input); row_range.addWidget(self.pv_max_input)
         geral_layout.addLayout(row_range)
 
         tabs.addTab(geral_tab, "Geral")
@@ -1362,9 +1026,7 @@ class ConfigVariavelDialog(QDialog):
         lei_tab = QWidget()
         lei_layout = QVBoxLayout(lei_tab)
         self.lei_edit = QPlainTextEdit(self.lei)
-        self.lei_edit.setTabChangesFocus(
-            False
-        )  # <<< agora Tab insere \t em vez de mudar de campo
+        self.lei_edit.setTabChangesFocus(False)  # <<< agora Tab insere \t em vez de mudar de campo
         lei_layout.addWidget(self.lei_edit)
 
         self.mods = list(mods or [])
@@ -1377,9 +1039,7 @@ class ConfigVariavelDialog(QDialog):
         self.in_if = QLineEdit()
         self.in_if.setPlaceholderText("Condição (ex.: G('FC001.ALRM') in ('H','HH'))")
         self.in_then = QLineEdit()
-        self.in_then.setPlaceholderText(
-            "Consequências (ex.: Pisca('#f00','#000');Borda('#f00',2))"
-        )
+        self.in_then.setPlaceholderText("Consequências (ex.: Pisca('#f00','#000');Borda('#f00',2))")
         btn_add = QPushButton("Adicionar")
         row_mod.addWidget(self.in_if)
         row_mod.addWidget(self.in_then)
@@ -1411,17 +1071,10 @@ class ConfigVariavelDialog(QDialog):
         ctrl_layout.addWidget(self.chk_controlada)
 
         # PID params
-        self.kp_input = QDoubleSpinBox()
-        self.kp_input.setValue(self.controle.get("Kp", 1.0))
-        self.ki_input = QDoubleSpinBox()
-        self.ki_input.setValue(self.controle.get("Ki", 0.0))
-        self.kd_input = QDoubleSpinBox()
-        self.kd_input.setValue(self.controle.get("Kd", 0.0))
-        for lbl, spin in [
-            ("Kp:", self.kp_input),
-            ("Ki:", self.ki_input),
-            ("Kd:", self.kd_input),
-        ]:
+        self.kp_input = QDoubleSpinBox(); self.kp_input.setValue(self.controle.get("Kp", 1.0))
+        self.ki_input = QDoubleSpinBox(); self.ki_input.setValue(self.controle.get("Ki", 0.0))
+        self.kd_input = QDoubleSpinBox(); self.kd_input.setValue(self.controle.get("Kd", 0.0))
+        for lbl, spin in [("Kp:", self.kp_input), ("Ki:", self.ki_input), ("Kd:", self.kd_input)]:
             row = QHBoxLayout()
             row.addWidget(QLabel(lbl))
             row.addWidget(spin)
@@ -1445,9 +1098,9 @@ class ConfigVariavelDialog(QDialog):
         # PV Tag (automático)
         ctrl_layout.addWidget(QLabel("PV (Process Variable):"))
         self.pv_combo = QComboBox()
-        self.pv_combo.addItems(
-            [f"{v}.pv" for v in self.variaveis_existentes if "." not in v]
-        )
+        self.pv_combo.addItems([
+            f"{v}.pv" for v in self.variaveis_existentes if "." not in v
+        ])
 
         if "pv_tag" in self.controle:
             idx = self.pv_combo.findText(self.controle["pv_tag"])
@@ -1461,42 +1114,25 @@ class ConfigVariavelDialog(QDialog):
         self.acao_combo = QComboBox()
         self.acao_combo.addItems(["Direta", "Reversa"])
         acao_atual = (self.controle.get("acao", "direta")).lower()
-        self.acao_combo.setCurrentText(
-            "Reversa" if acao_atual == "reversa" else "Direta"
-        )
+        self.acao_combo.setCurrentText("Reversa" if acao_atual == "reversa" else "Direta")
         ctrl_layout.addWidget(self.acao_combo)
         ctrl_layout.addWidget(QLabel("Destino SP remoto (master → slave):"))
-        self.mv_write_input = QLineEdit(
-            self.controle.get("mv_write_tag", "")
-        )  # ex.: "FC002.sp"
+        self.mv_write_input = QLineEdit(self.controle.get("mv_write_tag", ""))  # ex.: "FC002.sp"
         ctrl_layout.addWidget(self.mv_write_input)
+        
 
         # Conversão OP% → SP (engenharia) para cascata
         ctrl_layout.addWidget(QLabel("Conversão OP% → SP (Linear)"))
-        row0 = QHBoxLayout()
-        row1 = QHBoxLayout()
-        self.op_min = QDoubleSpinBox()
-        self.op_min.setRange(-1e6, 1e6)
-        self.op_min.setValue(self.controle.get("op_min", 0))
-        self.op_max = QDoubleSpinBox()
-        self.op_max.setRange(-1e6, 1e6)
-        self.op_max.setValue(self.controle.get("op_max", 100))
-        self.sp_min = QDoubleSpinBox()
-        self.sp_min.setRange(-1e9, 1e9)
-        self.sp_min.setValue(self.controle.get("sp_min", 0))
-        self.sp_max = QDoubleSpinBox()
-        self.sp_max.setRange(-1e9, 1e9)
-        self.sp_max.setValue(self.controle.get("sp_max", 1000))
-        row0.addWidget(QLabel("OP% min:"))
-        row0.addWidget(self.op_min)
-        row0.addWidget(QLabel("OP% max:"))
-        row0.addWidget(self.op_max)
-        row1.addWidget(QLabel("SP min:"))
-        row1.addWidget(self.sp_min)
-        row1.addWidget(QLabel("SP max:"))
-        row1.addWidget(self.sp_max)
-        ctrl_layout.addLayout(row0)
-        ctrl_layout.addLayout(row1)
+        row0 = QHBoxLayout(); row1 = QHBoxLayout()
+        self.op_min = QDoubleSpinBox(); self.op_min.setRange(-1e6,1e6); self.op_min.setValue(self.controle.get("op_min", 0))
+        self.op_max = QDoubleSpinBox(); self.op_max.setRange(-1e6,1e6); self.op_max.setValue(self.controle.get("op_max", 100))
+        self.sp_min = QDoubleSpinBox(); self.sp_min.setRange(-1e9,1e9); self.sp_min.setValue(self.controle.get("sp_min", 0))
+        self.sp_max = QDoubleSpinBox(); self.sp_max.setRange(-1e9,1e9); self.sp_max.setValue(self.controle.get("sp_max", 1000))
+        row0.addWidget(QLabel("OP% min:")); row0.addWidget(self.op_min)
+        row0.addWidget(QLabel("OP% max:")); row0.addWidget(self.op_max)
+        row1.addWidget(QLabel("SP min:")); row1.addWidget(self.sp_min)
+        row1.addWidget(QLabel("SP max:")); row1.addWidget(self.sp_max)
+        ctrl_layout.addLayout(row0); ctrl_layout.addLayout(row1)
         # Botão OK
         btn_ok = QPushButton("OK")
         btn_ok.clicked.connect(self.accept)
@@ -1531,14 +1167,13 @@ class ConfigVariavelDialog(QDialog):
                 self.mods.pop(row)
                 self._refresh_mod_list()
 
+
     def get_config(self):
         def _val(vspin):
             v = vspin.value()
             return None if (v == vspin.minimum()) else float(v)
 
-        alarmes = {
-            nome: _val(spin) for nome, spin in self.alarm_inputs.items()
-        }  # <<< usar _val
+        alarmes = {nome: _val(spin) for nome, spin in self.alarm_inputs.items()}  # <<< usar _val
         acao_str = "reversa" if self.acao_combo.currentText() == "Reversa" else "direta"
         controle = {
             "variavel_controlada": self.chk_controlada.isChecked(),
@@ -1556,15 +1191,12 @@ class ConfigVariavelDialog(QDialog):
             "sp_max": self.sp_max.value(),
             "pv_min": self.pv_min_input.value(),
             "pv_max": self.pv_max_input.value(),
-            "tipo": self.tipo_combo.currentText(),
+            "tipo": self.tipo_combo.currentText()
         }
-        return (
-            self.tag_input.text(),
-            alarmes,
-            self.lei_edit.toPlainText(),
-            controle,
-            self.mods,
-        )
+        return self.tag_input.text(), alarmes, self.lei_edit.toPlainText(), controle, self.mods
+
+
+                    
 
 
 class SimuladorCanvas(QGraphicsView):
@@ -1577,7 +1209,7 @@ class SimuladorCanvas(QGraphicsView):
         self.simulacao_rodando = False
         self.setDragMode(QGraphicsView.NoDrag)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
-        self.faceplates_abertos = {}
+        self.faceplates_abertos = {} 
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self._abrir_menu_contexto)
 
@@ -1598,6 +1230,7 @@ class SimuladorCanvas(QGraphicsView):
         self.timer_interface.start(1000)  # Ex: interface a cada 1000 ms
         self._prev_cache = {}  # para passado()
 
+
     def _tick_motor(self):
         if not getattr(self, "simulacao_rodando", False):
             return
@@ -1614,23 +1247,17 @@ class SimuladorCanvas(QGraphicsView):
 
         # 3) PID
         from controle import aplicar_controle_PID
-
         aplicar_controle_PID(self, dt=0.2)
 
     def _rodar_leis_locais_compat(self, skip_lhs: set):
         from singleton import VariaveisGlobais
-
         vg = VariaveisGlobais()
         skip_lhs = skip_lhs or set()
         for var in self.variaveis:
             lei = (getattr(var, "lei", "") or "").strip()
             if not lei:
                 continue  # lei vazia não interfere
-            lhs = (
-                f"{var.tag}.pv"
-                if not any(var.tag.endswith(s) for s in (".pv", ".sp", ".mv"))
-                else var.tag
-            )
+            lhs = f"{var.tag}.pv" if not any(var.tag.endswith(s) for s in (".pv",".sp",".mv")) else var.tag
             if lhs in skip_lhs:
                 continue  # já veio da Central
             # executa com seu executor atual
@@ -1641,7 +1268,7 @@ class SimuladorCanvas(QGraphicsView):
                     self._aplica_resultado(var, val)
             except Exception:
                 pass
-
+            
     def abrir_faceplate_variavel(self, item):
         tag = getattr(item, "tag", None)
         if not tag:
@@ -1658,7 +1285,7 @@ class SimuladorCanvas(QGraphicsView):
     def set_area_util(self, largura, altura, cor_fundo):
         self.area_largura = largura
         self.area_altura = altura
-        self.cor_fundo = cor_fundo
+        self.cor_fundo = cor_fundo 
         print("Cor de fundo:", cor_fundo.name())
         self.setSceneRect(0, 0, largura, altura)
 
@@ -1674,6 +1301,8 @@ class SimuladorCanvas(QGraphicsView):
         fundo.setData(0, "BG")
         self.scene.addItem(fundo)
 
+
+
     def carregar_projeto(self, caminho):
         with open(caminho, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -1688,6 +1317,7 @@ class SimuladorCanvas(QGraphicsView):
                 item = EditablePolyline.from_dict(obj)
                 self.scene.addItem(item)
 
+
             elif tipo == "variavel":
                 item = EditableVariable.from_dict(obj)
                 self.scene.addItem(item)
@@ -1695,6 +1325,7 @@ class SimuladorCanvas(QGraphicsView):
                 # 🔹 Inicializa no singleton
                 vg = VariaveisGlobais()
                 vg.inicializar_tag(item.tag)
+                
 
             elif tipo == "svg":
                 item = SvgObjectItem.from_dict(obj)
@@ -1702,18 +1333,15 @@ class SimuladorCanvas(QGraphicsView):
 
             # Remove flags de edição
             if hasattr(item, "setFlags"):
-                item.setFlags(
-                    item.flags() & ~item.ItemIsMovable & ~item.ItemIsSelectable
-                )
-
+                item.setFlags(item.flags() & ~item.ItemIsMovable & ~item.ItemIsSelectable)
+                
     def atualizar_controle(self):
         # legado desativado: tudo roda em _tick_motor
         return
 
+
     def atualizar_interface(self):
-        if getattr(self.main_window, "modo_modelo", False) or not getattr(
-            self, "simulacao_rodando", False
-        ):
+        if getattr(self.main_window, "modo_modelo", False) or not getattr(self, "simulacao_rodando", False):
             return
         self._atualizar_variaveis_simuladas()
         self._aplicar_modificadores_tick()
@@ -1723,32 +1351,16 @@ class SimuladorCanvas(QGraphicsView):
 
     def _executa_lei(self, var):
         from singleton import VariaveisGlobais
-
         vg = VariaveisGlobais()
         lei_codigo = getattr(var, "lei", "").strip() or "valor = G(f'{var.tag}.pv', 0)"
-        contexto = {
-            v.tag: vg.get(f"{v.tag}.pv", 0) for v in self.variaveis if hasattr(v, "tag")
-        }
+        contexto = {v.tag: vg.get(f"{v.tag}.pv", 0) for v in self.variaveis if hasattr(v, "tag")}
         try:
             safe_globals = {
                 "__builtins__": None,
-                "math": math,
-                "np": np,
-                "control": control,
-                "signal": signal,
-                "random": random,
-                "min": min,
-                "max": max,
-                "abs": abs,
-                "round": round,
-                "float": float,
-                "int": int,
-                "len": len,
-                "G": vg.get,
-                "hist": vg.hist,
-                "S": vg.set,
-                "passado": vg.passado,
-                "atual": vg.atual,
+                "math": math, "np": np, "control": control, "signal": signal, "random": random,
+                "min": min, "max": max, "abs": abs, "round": round,
+                "float": float, "int": int, "len": len,
+                "G": vg.get, "hist": vg.hist, "S": vg.set, "passado": vg.passado, "atual": vg.atual
             }
             safe_locals = dict(contexto)
             exec(lei_codigo, safe_globals, safe_locals)
@@ -1759,24 +1371,17 @@ class SimuladorCanvas(QGraphicsView):
             print(f"[LEI ERRO] {var.tag}: {e}")
             valor = vg.get(f"{var.tag}.pv", 0)
         return valor
-
     def _executar_lei_local_se_preciso(tag_base, lei_texto, vg, dt=0.2):
         # 1) lei vazia → NÃO altera nada
         if not lei_texto or not str(lei_texto).strip():
             return None  # sinal: manter o que já está em vg
 
         # 2) prepara ambiente seguro
-        import math
-        import random
-
+        import math, random
         env = {
             "__builtins__": None,
-            "math": math,
-            "random": random,
-            "G": vg.get,
-            "hist": vg.hist,
-            "passado": vg.passado,
-            "atual": vg.atual,
+            "math": math, "random": random,
+            "G": vg.get, "hist": vg.hist, "passado": vg.passado, "atual": vg.atual,
             "dt": float(dt),
         }
         loc = {}
@@ -1794,10 +1399,9 @@ class SimuladorCanvas(QGraphicsView):
             return float(loc["valor"])
         except Exception:
             return None
-
+        
     def _aplica_resultado(self, var, valor):
         from singleton import VariaveisGlobais
-
         vg = VariaveisGlobais()
 
         ctrl = getattr(var, "controle", {}) or {}
@@ -1815,14 +1419,12 @@ class SimuladorCanvas(QGraphicsView):
             vg.set(f"{var.tag}.pv", valor)
         var.atualizar_texto(valor)
 
+
     def _atualizar_variaveis_simuladas(self):
         # Só reflete na HMI o que o motor já calculou no VariaveisGlobais
-        if getattr(self.main_window, "modo_modelo", False) or not getattr(
-            self, "simulacao_rodando", False
-        ):
+        if getattr(self.main_window, "modo_modelo", False) or not getattr(self, "simulacao_rodando", False):
             return
         from singleton import VariaveisGlobais
-
         vg = VariaveisGlobais()
 
         for var in self.variaveis:
@@ -1830,24 +1432,17 @@ class SimuladorCanvas(QGraphicsView):
             if not tag:
                 continue
             # chave de leitura
-            lhs = (
-                tag
-                if any(tag.endswith(s) for s in (".pv", ".sp", ".mv"))
-                else f"{tag}.pv"
-            )
+            lhs = tag if any(tag.endswith(s) for s in (".pv",".sp",".mv")) else f"{tag}.pv"
             val = vg.get(lhs, 0.0)
 
             # clamp opcional para PV/SP (se quiser manter consistência visual)
             ctrl = getattr(var, "controle", {}) or {}
             if lhs.endswith(".pv") or lhs.endswith(".sp"):
-                pv_min = ctrl.get("pv_min", None)
-                pv_max = ctrl.get("pv_max", None)
+                pv_min = ctrl.get("pv_min", None); pv_max = ctrl.get("pv_max", None)
                 try:
                     fv = float(val)
                     if pv_min is not None and pv_max is not None:
-                        a, b = (
-                            (pv_min, pv_max) if pv_min <= pv_max else (pv_max, pv_min)
-                        )
+                        a,b = (pv_min,pv_max) if pv_min <= pv_max else (pv_max,pv_min)
                         fv = max(a, min(b, fv))
                     val = fv
                 except Exception:
@@ -1859,7 +1454,12 @@ class SimuladorCanvas(QGraphicsView):
             except Exception:
                 pass
 
+
+
+
+
     def adicionar_area_toque(self, largura=80, altura=80):
+
 
         # calcula o maior Z da cena
         max_z = max((item.zValue() for item in self.scene.items()), default=0)
@@ -1871,7 +1471,6 @@ class SimuladorCanvas(QGraphicsView):
         item.setZValue(max_z + 1)
 
         self.scene.addItem(item)
-
     def keyPressEvent(self, event):
         if self.main_window.modo_modelo and event.key() == Qt.Key_Delete:
             for item in self.scene.selectedItems():
@@ -1879,26 +1478,13 @@ class SimuladorCanvas(QGraphicsView):
                     self.scene.removeItem(item)
                     return
         super().keyPressEvent(event)
-
+        
     def _normalizar_item_alvo(self, it):
-        # Sobe para um tipo "conhecido" (var/SVG/linha/polyl/texto); TouchArea é QGraphicsRectItem -> retorna como está
-        while (
-            it
-            and not isinstance(
-                it,
-                (
-                    EditableVariable,
-                    SvgObjectItem,
-                    EditableLine,
-                    EditablePolyline,
-                    TouchAreaItem,
-                ),
-            )
-            and getattr(it, "toPlainText", None) is None
-        ):
+            # Sobe para um tipo "conhecido" (var/SVG/linha/polyl/texto); TouchArea é QGraphicsRectItem -> retorna como está
+        while it and not isinstance(it, (EditableVariable, SvgObjectItem, EditableLine, EditablePolyline, TouchAreaItem)) \
+            and getattr(it, "toPlainText", None) is None:
             it = it.parentItem()
         return it
-
     def mouseDoubleClickEvent(self, event):
         it = self.itemAt(event.pos())
         if not it:
@@ -1911,18 +1497,14 @@ class SimuladorCanvas(QGraphicsView):
             if isinstance(item, TouchAreaItem):
                 self._configurar_touch_area(item)
                 # limpar seleção pra sumir a borda azul
-                item.setSelected(False)
-                self.scene.clearSelection()
+                item.setSelected(False); self.scene.clearSelection()
                 return
             if isinstance(item, EditableVariable):
-                self.abrir_editor_variavel(item)
-                return
+                self.abrir_editor_variavel(item); return
             if isinstance(item, (SvgObjectItem, EditableLine, EditablePolyline)):
-                self.abrir_editor_modificadores(item)
-                return
+                self.abrir_editor_modificadores(item); return
             if hasattr(item, "toPlainText") and not hasattr(item, "tag"):  # texto livre
-                self.abrir_editor_modificadores(item)
-                return
+                self.abrir_editor_modificadores(item); return
 
         # --- MODO SIMULAÇÃO: comportamento da TouchArea (abrir faceplate / navegar) ---
         if isinstance(item, TouchAreaItem) and event.button() == Qt.LeftButton:
@@ -1940,27 +1522,21 @@ class SimuladorCanvas(QGraphicsView):
 
         return super().mouseDoubleClickEvent(event)
 
-    # 2) REESCREVA o mousePressEvent
+
+# 2) REESCREVA o mousePressEvent
     def mousePressEvent(self, event):
         # --------- MODO SIMULAÇÃO: NADA DE SELEÇÃO ----------
-        if event.button() == Qt.LeftButton and not getattr(
-            self.main_window, "modo_modelo", False
-        ):
+        if event.button() == Qt.LeftButton and not getattr(self.main_window, "modo_modelo", False):
             hit = self.itemAt(event.pos())
 
             # fundo: limpa seleção e consome
-            if (not hit) or (
-                isinstance(hit, QGraphicsRectItem) and hit.data(0) == "BG"
-            ):
+            if (not hit) or (isinstance(hit, QGraphicsRectItem) and hit.data(0) == "BG"):
                 self.scene.clearSelection()
                 return
 
             item = self._normalizar_item_alvo(hit)
 
-        if (
-            not getattr(self.main_window, "modo_modelo", False)
-            and event.button() == Qt.LeftButton
-        ):
+        if not getattr(self.main_window, "modo_modelo", False) and event.button() == Qt.LeftButton:
             item = self.itemAt(event.pos())
             if hasattr(item, "tag"):
                 tag = getattr(item, "tag", None)
@@ -1968,6 +1544,8 @@ class SimuladorCanvas(QGraphicsView):
                     fp = open_faceplate(tag)
                     fp.show()
                     return
+
+
 
         # --------- MODO MODELO: comportamento padrão (seleciona/edita) ----------
         super().mousePressEvent(event)
@@ -1977,17 +1555,17 @@ class SimuladorCanvas(QGraphicsView):
         for it in self.scene.items():
             if hasattr(it, "setFlag"):
                 it.setFlag(it.ItemIsSelectable & it.ItemIsMovable, em_modelo)
+                
 
     def _abrir_menu_contexto(self, pos):
         item = self._normalizar_item_alvo(self.itemAt(pos))
-        if not item:
-            return
+        if not item: return
 
         if isinstance(item, EditableVariable):
             tag = getattr(item, "tag", "")
             menu = QMenu(self)
-            act_props = menu.addAction("Propriedades")
-            act_face = menu.addAction("Abrir Faceplate")
+            act_props  = menu.addAction("Propriedades")
+            act_face   = menu.addAction("Abrir Faceplate")
             act_tuning = menu.addAction("Tuning")
             act_trends = menu.addAction("Tendências")
             acao = menu.exec_(self.mapToGlobal(pos))
@@ -1996,41 +1574,33 @@ class SimuladorCanvas(QGraphicsView):
                 self.abrir_editor_variavel(item)
             elif acao == act_face:
                 from faceplate import BaseFaceplate
-
                 BaseFaceplate(tag_name=tag).show()
             elif acao == act_tuning:
                 from tuning import TuningDialog
-
                 TuningDialog(tag, self).exec_()
             elif acao == act_trends:
                 presets = [
-                    f"{tag}|#00AEEF|",  # PV
+                    f"{tag}|#00AEEF|",     # PV
                     f"{tag}.sp|#FFD400|",  # SP
-                    f"{tag}.mv|#FF5A5A|%",  # MV no eixo de %
+                    f"{tag}.mv|#FF5A5A|%"  # MV no eixo de %
                 ]
                 open_trends(parent=self, titulo=f"Tendências - {tag}", presets=presets)
 
             # (opcional) menu para outros itens em modo modelo
             # dentro de _abrir_menu_contexto(...)
-            elif isinstance(
-                item, (EditableLine, EditablePolyline, SvgObjectItem)
-            ) and getattr(self.main_window, "modo_modelo", False):
+            elif isinstance(item, (EditableLine, EditablePolyline, SvgObjectItem)) and getattr(self.main_window, "modo_modelo", False):
                 menu = QMenu(self)
-                act_props = menu.addAction("Modificadores")  # renomeei pra ficar claro
+                act_props = menu.addAction("Modificadores")   # renomeei pra ficar claro
                 acao = menu.exec_(self.mapToGlobal(pos))
                 if acao == act_props:
-                    self.abrir_editor_modificadores(
-                        item
-                    )  # <<< aqui era abrir_editor_objeto(item)
+                    self.abrir_editor_modificadores(item)     # <<< aqui era abrir_editor_objeto(item)
 
-        if isinstance(
-            item, (EditableLine, EditablePolyline, SvgObjectItem)
-        ) and getattr(self.main_window, "modo_modelo", False):
-            menu = QMenu(self)
-            act_props = menu.addAction("Modificadores")
-            if menu.exec_(self.mapToGlobal(pos)) == act_props:
-                self.abrir_editor_modificadores(item)
-            return
+        if isinstance(item, (EditableLine, EditablePolyline, SvgObjectItem)) and getattr(self.main_window, "modo_modelo", False):
+                menu = QMenu(self)
+                act_props = menu.addAction("Modificadores")
+                if menu.exec_(self.mapToGlobal(pos)) == act_props:
+                    self.abrir_editor_modificadores(item)
+                return
 
     def abrir_editor_variavel(self, item):
         vg = VariaveisGlobais()  # <-- CRIE o vg AQUI no topo
@@ -2038,11 +1608,7 @@ class SimuladorCanvas(QGraphicsView):
         variaveis_existentes = [v.tag for v in self.variaveis if hasattr(v, "tag")]
         # 3) carregue alarmes e controle priorizando o que está no Singleton (tuning)
         conf_vg = vg.get(f"{item.tag}.controle", None)
-        ctrl_base = (
-            dict(conf_vg)
-            if isinstance(conf_vg, dict)
-            else dict(getattr(item, "controle", {}) or {})
-        )
+        ctrl_base = dict(conf_vg) if isinstance(conf_vg, dict) else dict(getattr(item, "controle", {}) or {})
         alarmes_exist = (
             getattr(item, "alarmes", None)
             or vg.get(f"{item.tag}.alarmes", None)
@@ -2054,30 +1620,26 @@ class SimuladorCanvas(QGraphicsView):
             getattr(item, "tag", ""),
             alarmes_exist,
             getattr(item, "lei", ""),
-            ctrl_base,  # <<<<< aqui vai o controle “atual”
+            ctrl_base,                        # <<<<< aqui vai o controle “atual”
             variaveis_existentes,
             getattr(item, "_mods", []),
-            self,
+            self
         )
 
         if dlg.exec_() == QDialog.Accepted:
-            nova_tag, novos_alarmes, nova_lei, novo_controle, novos_mods = (
-                dlg.get_config()
-            )
+            nova_tag, novos_alarmes, nova_lei, novo_controle, novos_mods = dlg.get_config()
 
             # 5) persiste no item (para salvar/reabrir o modelo do arquivo)
             item.tag = nova_tag
             item.alarmes = novos_alarmes
             item.lei = nova_lei
-            item.controle = dict(
-                novo_controle
-            )  # <<<<< garante que Kp/Ki/Kd vão pro arquivo
+            item.controle = dict(novo_controle)     # <<<<< garante que Kp/Ki/Kd vão pro arquivo
             item._mods = list(novos_mods or [])
 
             # 6) persiste no Singleton (para refletir imediatamente na simulação)
             vg.set(f"{nova_tag}.controle", dict(novo_controle))
             vg.set(f"{nova_tag}.alarmes", dict(novos_alarmes))
-
+            
     def _garantir_variaveis_filhas(self):
         sufixos = [".pv", ".sp", ".mv"]
         existentes = {v.tag for v in self.variaveis}
@@ -2100,13 +1662,12 @@ class SimuladorCanvas(QGraphicsView):
 
         self.variaveis.extend(novas)
 
+
     def abrir_editor_objeto(self, item):
         self._abrir_dialogo("Editor de Objeto", "Configuração de modificadores de cor")
 
     def abrir_editor_texto(self, item):
-        self._abrir_dialogo(
-            "Editor de Texto", f"Configuração de '{item.toPlainText()}'"
-        )
+        self._abrir_dialogo("Editor de Texto", f"Configuração de '{item.toPlainText()}'")
 
     def _abrir_dialogo(self, titulo, texto):
         dlg = QDialog(self)
@@ -2117,10 +1678,9 @@ class SimuladorCanvas(QGraphicsView):
         ok_btn.clicked.connect(dlg.accept)
         layout.addWidget(ok_btn)
         dlg.exec_()
-
+        
     def _aplicar_modificadores_tick(self):
         from singleton import VariaveisGlobais
-
         vg = VariaveisGlobais()
 
         # tempo para piscar (1 Hz -> alterna a cada chamada, ou use contador/tempo real)
@@ -2168,48 +1728,28 @@ class SimuladorCanvas(QGraphicsView):
                 # aplica ações
                 for action in rule.get("then", []):
                     self._aplicar_acao(item, action, blink_on=self._blink_on)
-
     def _reset_visual(self, item):
         # Reverte para baseline visual
-        if (
-            hasattr(item, "_base_pen")
-            and item._base_pen is not None
-            and hasattr(item, "setPen")
-        ):
+        if hasattr(item, "_base_pen") and item._base_pen is not None and hasattr(item, "setPen"):
             item.setPen(item._base_pen)
-        if (
-            hasattr(item, "_base_brush")
-            and item._base_brush is not None
-            and hasattr(item, "setBrush")
-        ):
+        if hasattr(item, "_base_brush") and item._base_brush is not None and hasattr(item, "setBrush"):
             item.setBrush(item._base_brush)
         if hasattr(item, "_base_opacity"):
             item.setOpacity(item._base_opacity)
         # Evita sobrescrever texto de variáveis dinâmicas
-        if (
-            not hasattr(item, "tag")
-            and hasattr(item, "_base_text")
-            and hasattr(item, "setPlainText")
-        ):
+        if not hasattr(item, "tag") and hasattr(item, "_base_text") and hasattr(item, "setPlainText"):
             item.setPlainText(item._base_text)
         if hasattr(item, "_base_color") and hasattr(item, "setDefaultTextColor"):
             item.setDefaultTextColor(item._base_color)
         try:
             for ch in getattr(item, "childItems", lambda: [])():
-                if (
-                    hasattr(ch, "_base_pen")
-                    and hasattr(ch, "setPen")
-                    and ch._base_pen is not None
-                ):
+                if hasattr(ch, "_base_pen") and hasattr(ch, "setPen") and ch._base_pen is not None:
                     ch.setPen(ch._base_pen)
-                if (
-                    hasattr(ch, "_base_brush")
-                    and hasattr(ch, "setBrush")
-                    and ch._base_brush is not None
-                ):
+                if hasattr(ch, "_base_brush") and hasattr(ch, "setBrush") and ch._base_brush is not None:
                     ch.setBrush(ch._base_brush)
         except Exception:
             pass
+
 
     def _aplicar_acao(self, item, action_str, blink_on=False):
         """
@@ -2262,13 +1802,7 @@ class SimuladorCanvas(QGraphicsView):
             # 3) Ganchos comuns em wrappers de SVG
             #    (se seu SvgObjectItem tiver um desses métodos, eles serão chamados)
             if not applied:
-                for m in (
-                    "setFill",
-                    "set_fill",
-                    "setFillColor",
-                    "set_fill_color",
-                    "apply_fill",
-                ):
+                for m in ("setFill", "set_fill", "setFillColor", "set_fill_color", "apply_fill"):
                     if hasattr(item, m):
                         try:
                             getattr(item, m)(cor)
@@ -2281,15 +1815,13 @@ class SimuladorCanvas(QGraphicsView):
             # if not applied:
             #     print("[Mods] Preenchimento: item não aceita brush nem filhos com brush")
 
+
         elif nome == "Pisca":
             # Pisca(c1, c2) -> alterna cor da borda entre c1 e c2
             c1 = _parse_cor(args[0]) if len(args) > 0 else QColor("red")
             c2 = _parse_cor(args[1]) if len(args) > 1 else QColor("black")
             if hasattr(item, "setPen"):
-                pen = QPen(
-                    c1 if blink_on else c2,
-                    getattr(item, "pen", lambda: QPen()).__call__().widthF() or 1.0,
-                )
+                pen = QPen(c1 if blink_on else c2, getattr(item, "pen", lambda: QPen()).__call__().widthF() or 1.0)
                 item.setPen(pen)
             # para textos, piscar cor do texto
             if hasattr(item, "setDefaultTextColor"):
@@ -2314,14 +1846,14 @@ class SimuladorCanvas(QGraphicsView):
                 "DashLine": Qt.DashLine,
                 "DotLine": Qt.DotLine,
                 "DashDotLine": Qt.DashDotLine,
-                "DashDotDotLine": Qt.DashDotDotLine,
+                "DashDotDotLine": Qt.DashDotDotLine
             }
             estilo = estilos.get(estilo_str, Qt.SolidLine)
             if hasattr(item, "setPen"):
                 pen_atual = item.pen() if hasattr(item, "pen") else QPen()
                 pen = QPen(pen_atual.color(), pen_atual.widthF(), estilo)
                 item.setPen(pen)
-
+                
     def abrir_editor_modificadores(self, item):
         mods_existentes = getattr(item, "_mods", [])
         dlg = ConfigVariavelDialog(
@@ -2331,7 +1863,7 @@ class SimuladorCanvas(QGraphicsView):
             controle={},
             variaveis_existentes=[],
             mods=mods_existentes,
-            parent=self,
+            parent=self
         )
         # Remove abas "Geral" e "Controle"
         dlg.findChild(QTabWidget).removeTab(2)  # Controle
@@ -2367,12 +1899,8 @@ class SimuladorCanvas(QGraphicsView):
                 pass
         else:
             try:
-                value_combo.addItems(
-                    [
-                        self.main_window.tab_widget.tabText(i)
-                        for i in range(self.main_window.tab_widget.count())
-                    ]
-                )
+                value_combo.addItems([self.main_window.tab_widget.tabText(i)
+                                    for i in range(self.main_window.tab_widget.count())])
             except Exception:
                 pass
         value_combo.setEditable(True)
@@ -2381,36 +1909,28 @@ class SimuladorCanvas(QGraphicsView):
 
         # Cor da borda
         btn_color = QPushButton("Escolher cor da borda")
-
         def choose_color():
             c = QColorDialog.getColor(touch_item.border_color, self)
-            if c.isValid():
-                touch_item.border_color = c
-
+            if c.isValid(): touch_item.border_color = c
         btn_color.clicked.connect(choose_color)
         layout.addWidget(btn_color)
 
         # Largura e altura
         layout.addWidget(QLabel("Largura:"))
-        width_input = QDoubleSpinBox()
-        width_input.setRange(10, 1000)
-        width_input.setValue(touch_item.rect().width())
+        width_input = QDoubleSpinBox(); width_input.setRange(10, 1000); width_input.setValue(touch_item.rect().width())
         layout.addWidget(width_input)
         layout.addWidget(QLabel("Altura:"))
-        height_input = QDoubleSpinBox()
-        height_input.setRange(10, 1000)
-        height_input.setValue(touch_item.rect().height())
+        height_input = QDoubleSpinBox(); height_input.setRange(10, 1000); height_input.setValue(touch_item.rect().height())
         layout.addWidget(height_input)
 
         # OK
         btn_ok = QPushButton("OK")
-
+        
         def apply_and_close():
             touch_item.target_type = type_combo.currentText()
             touch_item.target_value = value_combo.currentText()
             touch_item.setRect(0, 0, width_input.value(), height_input.value())
             dlg.accept()
-
         btn_ok.clicked.connect(apply_and_close)
         layout.addWidget(btn_ok)
 
@@ -2423,7 +1943,6 @@ class SimuladorCanvas(QGraphicsView):
         - Retorna a TAG criada/garantida.
         """
         from PyQt5.QtWidgets import QGraphicsTextItem
-
         vg = VariaveisGlobais()
 
         # define nome
@@ -2438,62 +1957,16 @@ class SimuladorCanvas(QGraphicsView):
             for v in self.variaveis:
                 if getattr(v, "tag", "") == tag:
                     vg.set(f"{tag}.tipo", "DIG")
-                    for i in range(6):
-                        vg.set(f"{tag}.PV{i}", int(vg.get(f"{tag}.PV{i}", 0) or 0))
+                    for i in range(6): vg.set(f"{tag}.PV{i}", int(vg.get(f"{tag}.PV{i}", 0) or 0))
                     if vg.get(f"{tag}.digi.map", None) is None:
-                        vg.set(
-                            f"{tag}.digi.map",
-                            {
-                                "PV0": {
-                                    "text0": "LIGA",
-                                    "text1": "LIGA",
-                                    "visible": True,
-                                    "law": "",
-                                    "pulse": True,
-                                    "confirm": True,
-                                },
-                                "PV1": {
-                                    "text0": "DESLIGA",
-                                    "text1": "DESLIGA",
-                                    "visible": True,
-                                    "law": "",
-                                    "pulse": True,
-                                    "confirm": True,
-                                },
-                                "PV2": {
-                                    "text0": "...",
-                                    "text1": "...",
-                                    "visible": False,
-                                    "law": "",
-                                    "pulse": False,
-                                    "confirm": True,
-                                },
-                                "PV3": {
-                                    "text0": "...",
-                                    "text1": "...",
-                                    "visible": False,
-                                    "law": "",
-                                    "pulse": False,
-                                    "confirm": True,
-                                },
-                                "PV4": {
-                                    "text0": "...",
-                                    "text1": "...",
-                                    "visible": False,
-                                    "law": "",
-                                    "pulse": False,
-                                    "confirm": True,
-                                },
-                                "PV5": {
-                                    "text0": "PARADO",
-                                    "text1": "OPERANDO",
-                                    "visible": True,
-                                    "law": "",
-                                    "pulse": False,
-                                    "confirm": True,
-                                },
-                            },
-                        )
+                        vg.set(f"{tag}.digi.map", {
+                            "PV0": {"text0": "LIGA", "text1": "LIGA", "visible": True, "law": "", "pulse": True, "confirm": True},
+                            "PV1": {"text0": "DESLIGA", "text1": "DESLIGA", "visible": True, "law": "", "pulse": True, "confirm": True},
+                            "PV2": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+                            "PV3": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+                            "PV4": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+                            "PV5": {"text0": "PARADO",  "text1": "OPERANDO", "visible": True, "law": "", "pulse": False, "confirm": True}
+                        })
                     return tag
 
         # cria item invisível/off-canvas
@@ -2519,70 +1992,28 @@ class SimuladorCanvas(QGraphicsView):
         vg.set(f"{tag}.tipo", "DIG")
         for i in range(6):
             vg.set(f"{tag}.PV{i}", 0)
-        vg.set(
-            f"{tag}.digi.map",
-            {
-                "PV0": {
-                    "text0": "LIGA",
-                    "text1": "LIGA",
-                    "visible": True,
-                    "law": "",
-                    "pulse": True,
-                    "confirm": True,
-                },
-                "PV1": {
-                    "text0": "DESLIGA",
-                    "text1": "DESLIGA",
-                    "visible": True,
-                    "law": "",
-                    "pulse": True,
-                    "confirm": True,
-                },
-                "PV2": {
-                    "text0": "...",
-                    "text1": "...",
-                    "visible": False,
-                    "law": "",
-                    "pulse": False,
-                    "confirm": True,
-                },
-                "PV3": {
-                    "text0": "...",
-                    "text1": "...",
-                    "visible": False,
-                    "law": "",
-                    "pulse": False,
-                    "confirm": True,
-                },
-                "PV4": {
-                    "text0": "...",
-                    "text1": "...",
-                    "visible": False,
-                    "law": "",
-                    "pulse": False,
-                    "confirm": True,
-                },
-                "PV5": {
-                    "text0": "PARADO",
-                    "text1": "OPERANDO",
-                    "visible": True,
-                    "law": "",
-                    "pulse": False,
-                    "confirm": True,
-                },
-            },
-        )
+        vg.set(f"{tag}.digi.map", {
+            "PV0": {"text0": "LIGA", "text1": "LIGA", "visible": True, "law": "", "pulse": True, "confirm": True},
+            "PV1": {"text0": "DESLIGA", "text1": "DESLIGA", "visible": True, "law": "", "pulse": True, "confirm": True},
+            "PV2": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+            "PV3": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+            "PV4": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+            "PV5": {"text0": "PARADO",  "text1": "OPERANDO", "visible": True, "law": "", "pulse": False, "confirm": True}
+        })
 
         print(f"[+] Variável digital criada (off-canvas, oculta): {tag}")
         return tag
 
 
-# ... seus imports no topo ...
-from PyQt5.QtWidgets import QFormLayout, QListWidget, QListWidgetItem, QSpinBox  # ...
-from singleton import VariaveisGlobais
 
+# ... seus imports no topo ...
+from PyQt5.QtWidgets import (
+    # ...
+    QListWidget, QListWidgetItem, QFormLayout, QSpinBox
+)
 # ...
 
+from singleton import VariaveisGlobais
 
 # =========================================================
 #  DIALOGO: Editor de Variável Digital (PV0..PV5 + Modificadores)
@@ -2598,7 +2029,6 @@ class DigitalVarEditor(QDialog):
       }
       vg[f"{tag}.tipo"] = "DIG"
     """
-
     def __init__(self, tag, parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"Variável Digital • {tag}")
@@ -2612,22 +2042,12 @@ class DigitalVarEditor(QDialog):
 
         # Tabela PV0..PV5
         grid = QGridLayout()
-        grid.setHorizontalSpacing(8)
-        grid.setVerticalSpacing(6)
+        grid.setHorizontalSpacing(8); grid.setVerticalSpacing(6)
 
         # --- cabeçalhos ---
-        hdr = [
-            "PV",
-            "Texto (0)",
-            "Texto (1)",
-            "Visível",
-            "Pulso",
-            "Confirmação",
-            "Lei (opcional)",
-        ]
+        hdr = ["PV", "Texto (0)", "Texto (1)", "Visível", "Pulso", "Confirmação", "Lei (opcional)"]
         for c, t in enumerate(hdr):
-            lbl = QLabel(t)
-            lbl.setStyleSheet("font-weight:600;")
+            lbl = QLabel(t); lbl.setStyleSheet("font-weight:600;")
             grid.addWidget(lbl, 0, c)
 
         self.rows = []  # lista de dicts por PV
@@ -2639,45 +2059,31 @@ class DigitalVarEditor(QDialog):
             lbl_pv = QLabel(key)
             ed_t0 = QLineEdit(cfg.get("text0", key))
             ed_t1 = QLineEdit(cfg.get("text1", key))
-            ck_vis = QCheckBox()
-            ck_vis.setChecked(bool(cfg.get("visible", False)))
-            ck_pulse = QCheckBox()
-            ck_pulse.setChecked(bool(cfg.get("pulse", True if i in (0, 1) else False)))
-            ck_confirm = QCheckBox()
-            ck_confirm.setChecked(bool(cfg.get("confirm", False)))
+            ck_vis = QCheckBox(); ck_vis.setChecked(bool(cfg.get("visible", False)))
+            ck_pulse = QCheckBox(); ck_pulse.setChecked(bool(cfg.get("pulse", True if i in (0,1) else False)))
+            ck_confirm = QCheckBox(); ck_confirm.setChecked(bool(cfg.get("confirm", False)))
             ed_law = QLineEdit(cfg.get("law", ""))
 
-            r = {
-                "key": key,
-                "t0": ed_t0,
-                "t1": ed_t1,
-                "vis": ck_vis,
-                "pulse": ck_pulse,
-                "confirm": ck_confirm,
-                "law": ed_law,
-            }
+            r = {"key": key, "t0": ed_t0, "t1": ed_t1, "vis": ck_vis, "pulse": ck_pulse, "confirm": ck_confirm, "law": ed_law}
             self.rows.append(r)
 
             row = i + 1
-            grid.addWidget(lbl_pv, row, 0)
-            grid.addWidget(ed_t0, row, 1)
-            grid.addWidget(ed_t1, row, 2)
-            grid.addWidget(ck_vis, row, 3)
-            grid.addWidget(ck_pulse, row, 4)
-            grid.addWidget(ck_confirm, row, 5)
-            grid.addWidget(ed_law, row, 6)
+            grid.addWidget(lbl_pv,    row, 0)
+            grid.addWidget(ed_t0,     row, 1)
+            grid.addWidget(ed_t1,     row, 2)
+            grid.addWidget(ck_vis,    row, 3)
+            grid.addWidget(ck_pulse,  row, 4)
+            grid.addWidget(ck_confirm,row, 5)
+            grid.addWidget(ed_law,    row, 6)
+
 
         main.addLayout(grid)
 
         # Botões
         btns = QHBoxLayout()
-        bt_ok = QPushButton("Salvar")
-        bt_ok.clicked.connect(self._salvar)
-        bt_cancel = QPushButton("Cancelar")
-        bt_cancel.clicked.connect(self.reject)
-        btns.addStretch(1)
-        btns.addWidget(bt_ok)
-        btns.addWidget(bt_cancel)
+        bt_ok = QPushButton("Salvar"); bt_ok.clicked.connect(self._salvar)
+        bt_cancel = QPushButton("Cancelar"); bt_cancel.clicked.connect(self.reject)
+        btns.addStretch(1); btns.addWidget(bt_ok); btns.addWidget(bt_cancel)
         main.addLayout(btns)
 
     def _ensure_default_map(self):
@@ -2685,54 +2091,14 @@ class DigitalVarEditor(QDialog):
         if self.vg.get(f"{self.tag}.digi.map", None) is not None:
             return
         default_map = {
-            "PV0": {
-                "text0": "LIGA",
-                "text1": "LIGA",
-                "visible": True,
-                "law": "",
-                "pulse": True,
-                "confirm": True,
-            },
-            "PV1": {
-                "text0": "DESLIGA",
-                "text1": "DESLIGA",
-                "visible": True,
-                "law": "",
-                "pulse": True,
-                "confirm": True,
-            },
-            "PV2": {
-                "text0": "...",
-                "text1": "...",
-                "visible": False,
-                "law": "",
-                "pulse": False,
-                "confirm": True,
-            },
-            "PV3": {
-                "text0": "...",
-                "text1": "...",
-                "visible": False,
-                "law": "",
-                "pulse": False,
-                "confirm": True,
-            },
-            "PV4": {
-                "text0": "...",
-                "text1": "...",
-                "visible": False,
-                "law": "",
-                "pulse": False,
-                "confirm": True,
-            },
-            "PV5": {
-                "text0": "PARADO",
-                "text1": "OPERANDO",
-                "visible": True,
-                "law": "",
-                "pulse": False,
-                "confirm": True,
-            },
+            "PV0": {"text0": "LIGA", "text1": "LIGA", "visible": True, "law": "", "pulse": True, "confirm": True},
+            "PV1": {"text0": "DESLIGA", "text1": "DESLIGA", "visible": True, "law": "", "pulse": True, "confirm": True},
+            "PV2": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+            "PV3": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+            "PV4": {"text0": "...", "text1": "...", "visible": False, "law": "", "pulse": False, "confirm": True},
+            "PV5": {"text0": "PARADO",  "text1": "OPERANDO", "visible": True, "law": "", "pulse": False, "confirm": True}
+
+
         }
         self.vg.set(f"{self.tag}.digi.map", default_map)
 
@@ -2751,7 +2117,6 @@ class DigitalVarEditor(QDialog):
         self.vg.set(f"{self.tag}.tipo", "DIG")
         self.accept()
 
-
 # =========================================================
 #  DIALOGO: Central de Variáveis (abas Analógicas / Digitais)
 # =========================================================
@@ -2761,8 +2126,7 @@ class VariaveisCentralDialog(QDialog):
       - Analógicas: lista tudo que NÃO é DIG → 2 cliques abre ConfigVariavelDialog
       - Digitais  : lista DIG → Add / Edit / Remover (abre DigitalVarEditor)
     """
-
-    def __init__(self, canvas: "SimuladorCanvas", parent=None):
+    def __init__(self, canvas: 'SimuladorCanvas', parent=None):
         super().__init__(parent)
         self.setWindowTitle("Central de Variáveis")
         self.resize(520, 420)
@@ -2771,42 +2135,32 @@ class VariaveisCentralDialog(QDialog):
         self.show()  # abre já com a lista; se preferir modal, mantenha exec_() lá no main
 
         main = QVBoxLayout(self)
-        self.tabs = QTabWidget()
-        main.addWidget(self.tabs)
+        self.tabs = QTabWidget(); main.addWidget(self.tabs)
 
         # --- Analógicas
-        w_ana = QWidget()
-        lay_ana = QVBoxLayout(w_ana)
-        self.lst_ana = QListWidget()
-        lay_ana.addWidget(self.lst_ana)
-        bt_edit_ana = QPushButton("Editar")
-        bt_edit_ana.clicked.connect(self._editar_analogica)
+        w_ana = QWidget(); lay_ana = QVBoxLayout(w_ana)
+        self.lst_ana = QListWidget(); lay_ana.addWidget(self.lst_ana)
+        bt_edit_ana = QPushButton("Editar"); bt_edit_ana.clicked.connect(self._editar_analogica)
         lay_ana.addWidget(bt_edit_ana)
         self.tabs.addTab(w_ana, "Analógicas")
         # Dentro de VariaveisCentralDialog.__init__ (na aba Analógicas)
         row_ana = QHBoxLayout()
-        bt_add_ana = QPushButton("Remover Analógica")
-        bt_add_ana.clicked.connect(self._remover_analogica)
+        bt_add_ana = QPushButton("Remover Analógica"); bt_add_ana.clicked.connect(self._remover_analogica)
         row_ana.addWidget(bt_add_ana)
         lay_ana.addLayout(row_ana)
 
+
         # --- Digitais
-        w_dig = QWidget()
-        lay_dig = QVBoxLayout(w_dig)
-        self.lst_dig = QListWidget()
-        lay_dig.addWidget(self.lst_dig)
+        w_dig = QWidget(); lay_dig = QVBoxLayout(w_dig)
+        self.lst_dig = QListWidget(); lay_dig.addWidget(self.lst_dig)
         row_dig = QHBoxLayout()
-        bt_add_dig = QPushButton("Adicionar Digital")
-        bt_add_dig.clicked.connect(self._adicionar_digital)
-        bt_edit_dig = QPushButton("Editar")
-        bt_edit_dig.clicked.connect(self._editar_digital)
-        bt_ren_dig = QPushButton("Renomear")
-        bt_ren_dig.clicked.connect(self._renomear_digital)
-        bt_del_dig = QPushButton("Remover")
-        bt_del_dig.clicked.connect(self._remover_digital)
+        bt_add_dig = QPushButton("Adicionar Digital"); bt_add_dig.clicked.connect(self._adicionar_digital)
+        bt_edit_dig = QPushButton("Editar"); bt_edit_dig.clicked.connect(self._editar_digital)
+        bt_ren_dig  = QPushButton("Renomear"); bt_ren_dig.clicked.connect(self._renomear_digital)
+        bt_del_dig = QPushButton("Remover"); bt_del_dig.clicked.connect(self._remover_digital)
         row_dig.addWidget(bt_add_dig)
         row_dig.addWidget(bt_edit_dig)
-        row_dig.addWidget(bt_ren_dig)
+        row_dig.addWidget(bt_ren_dig)  
         row_dig.addWidget(bt_del_dig)
         lay_dig.addLayout(row_dig)
         self.tabs.addTab(w_dig, "Digitais")
@@ -2817,23 +2171,16 @@ class VariaveisCentralDialog(QDialog):
 
     def _remover_analogica(self):
         from PyQt5.QtWidgets import QMessageBox
-
         item = self.lst_ana.currentItem()
         if not item:
-            QMessageBox.information(
-                self, "Remover", "Selecione uma variável analógica na lista."
-            )
+            QMessageBox.information(self, "Remover", "Selecione uma variável analógica na lista.")
             return
 
         base = item.text().strip().upper()
-        if (
-            QMessageBox.question(
-                self,
-                "Confirmar remoção",
-                f"Remover a TAG '{base}'?\nIsso também remove equações analógicas com LHS dessa TAG.",
-            )
-            != QMessageBox.Yes
-        ):
+        if QMessageBox.question(
+            self, "Confirmar remoção",
+            f"Remover a TAG '{base}'?\nIsso também remove equações analógicas com LHS dessa TAG.",
+        ) != QMessageBox.Yes:
             return
 
         vg = self.vg  # VariaveisGlobais()
@@ -2845,47 +2192,33 @@ class VariaveisCentralDialog(QDialog):
                 d = getattr(vg, attr, None)
                 if isinstance(d, dict):
                     for k in list(d.keys()):
-                        if isinstance(k, str) and (
-                            k == f"{base}.tipo"
-                            or k == f"{base}.controle"
-                            or k.startswith(prefix)
-                        ):
-                            try:
-                                del d[k]
-                            except Exception:
-                                pass
+                        if isinstance(k, str) and (k == f"{base}.tipo" or k == f"{base}.controle" or k.startswith(prefix)):
+                            try: del d[k]
+                            except Exception: pass
             # histórico
             hist = getattr(vg, "historico", None)
             if isinstance(hist, dict):
                 for k in list(hist.keys()):
                     if isinstance(k, str) and k.startswith(prefix):
-                        try:
-                            del hist[k]
-                        except Exception:
-                            pass
+                        try: del hist[k]
+                        except Exception: pass
             # buffer
             buf = getattr(vg, "buffer", None)
             if isinstance(buf, dict):
                 for k in list(buf.keys()):
                     if isinstance(k, str) and k.startswith(prefix):
-                        try:
-                            del buf[k]
-                        except Exception:
-                            pass
+                        try: del buf[k]
+                        except Exception: pass
 
         _del_prefix(f"{base}.")
 
         # ---- remover equações analógicas com LHS dessa TAG ----
         eq = vg.get("analog.eq", []) or []
-
         def _lhs_base(lhs: str) -> str:
             lhs = (lhs or "").strip()
-            if not lhs:
-                return ""
-            if "=" in lhs:
-                lhs = lhs.split("=", 1)[0].strip()
-            if "." in lhs:
-                lhs = lhs.split(".", 1)[0].strip()
+            if not lhs: return ""
+            if "=" in lhs: lhs = lhs.split("=", 1)[0].strip()
+            if "." in lhs: lhs = lhs.split(".", 1)[0].strip()
             return lhs.upper()
 
         if isinstance(eq, list):
@@ -2904,6 +2237,7 @@ class VariaveisCentralDialog(QDialog):
         self._popular_listas()
         self.lst_ana.clearSelection()
 
+            
     def _popular_listas(self):
         self.lst_ana.clear()
         self.lst_dig.clear()
@@ -2931,7 +2265,6 @@ class VariaveisCentralDialog(QDialog):
                     tags.add(t)
         # 3.1) Também coleta TAGs definidas nas Equações Analógicas (analog.eq)
         eq = self.vg.get("analog.eq", []) or []
-
         def _lhs_to_base(lhs: str) -> str:
             lhs = (lhs or "").strip()
             if not lhs:
@@ -2956,18 +2289,14 @@ class VariaveisCentralDialog(QDialog):
             tipo = (self.vg.get(f"{tag}.tipo", "ANA") or "ANA").upper()
             if tipo == "DIG":
                 self.lst_dig.addItem(tag)
-            elif tipo != "REM":  # ignora removidas
+            elif tipo != "REM":   # ignora removidas
                 self.lst_ana.addItem(tag)
         eq = self.vg.get("analog.eq", []) or []
-
         def _lhs_to_base(lhs: str) -> str:
             lhs = (lhs or "").strip()
-            if not lhs:
-                return ""
-            if "=" in lhs:
-                lhs = lhs.split("=", 1)[0].strip()
-            if "." in lhs:
-                lhs = lhs.split(".", 1)[0].strip()
+            if not lhs: return ""
+            if "=" in lhs: lhs = lhs.split("=", 1)[0].strip()
+            if "." in lhs: lhs = lhs.split(".", 1)[0].strip()
             return lhs.upper()
 
         if isinstance(eq, list):
@@ -2979,9 +2308,10 @@ class VariaveisCentralDialog(QDialog):
                 else:
                     continue
                 if base:
-                    tags.add(base)
+                    tags.add(base)       
 
-    def _sel(self, lst):
+
+    def _sel(self, lst): 
         it = lst.currentItem()
         return it.text().strip() if it else ""
 
@@ -2991,21 +2321,16 @@ class VariaveisCentralDialog(QDialog):
             return
         item = None
         if getattr(self, "canvas", None):
-            item = next(
-                (v for v in self.canvas.variaveis if getattr(v, "tag", "") == tag), None
-            )
+            item = next((v for v in self.canvas.variaveis if getattr(v, "tag", "") == tag), None)
         if item is None:
             from PyQt5.QtWidgets import QMessageBox
-
-            QMessageBox.information(
-                self,
-                "Variável não está na tela",
-                f"A variável '{tag}' não está no canvas desta tela.\n"
-                f"Adicione-a à tela para editar os parâmetros analógicos.",
-            )
+            QMessageBox.information(self, "Variável não está na tela",
+                                    f"A variável '{tag}' não está no canvas desta tela.\n"
+                                    f"Adicione-a à tela para editar os parâmetros analógicos.")
             return
         self.canvas.abrir_editor_variavel(item)
         self._popular_listas()
+
 
     def _adicionar_digital(self):
         if not self.canvas:
@@ -3024,14 +2349,14 @@ class VariaveisCentralDialog(QDialog):
         dlg.exec_()
         self._popular_listas()
 
+
     def _editar_digital(self):
         tag = self._sel(self.lst_dig)
         if not tag:
             # se nada selecionado, pega o primeiro da lista
             if self.lst_dig.count() == 0:
-                QMessageBox.information(
-                    self, "Sem digitais", "Não há variáveis digitais cadastradas."
-                )
+                QMessageBox.information(self, "Sem digitais",
+                                        "Não há variáveis digitais cadastradas.")
                 return
             tag = self.lst_dig.item(0).text().strip()
             self.lst_dig.setCurrentRow(0)
@@ -3046,28 +2371,19 @@ class VariaveisCentralDialog(QDialog):
         tag = self._sel(self.lst_dig)
         if not tag:
             if self.lst_dig.count() == 0:
-                QMessageBox.information(
-                    self, "Digitais", "Não há variáveis digitais na lista."
-                )
+                QMessageBox.information(self, "Digitais", "Não há variáveis digitais na lista.")
                 return
             self.lst_dig.setCurrentRow(0)
             tag = self._sel(self.lst_dig)
 
         # pergunta o novo nome
-        novo, ok = QInputDialog.getText(
-            self,
-            "Renomear variável digital",
-            f"Novo nome para '{tag}':",
-            QLineEdit.Normal,
-            tag,
-        )
+        novo, ok = QInputDialog.getText(self, "Renomear variável digital",
+                                        f"Novo nome para '{tag}':", QLineEdit.Normal, tag)
         if not ok or not novo:
             return
         novo = novo.strip()
         if "." in novo:
-            QMessageBox.warning(
-                self, "Nome inválido", "A TAG não pode conter ponto (.)."
-            )
+            QMessageBox.warning(self, "Nome inválido", "A TAG não pode conter ponto (.).")
             return
         if novo == tag:
             return
@@ -3082,9 +2398,7 @@ class VariaveisCentralDialog(QDialog):
         # valida duplicidade
         tags_existentes = set(_listar_tags_do_vg(self.vg, self.canvas))
         if novo in tags_existentes:
-            QMessageBox.warning(
-                self, "TAG existente", f"Já existe uma variável chamada '{novo}'."
-            )
+            QMessageBox.warning(self, "TAG existente", f"Já existe uma variável chamada '{novo}'.")
             return
 
         # renomeia no VariaveisGlobais
@@ -3100,9 +2414,8 @@ class VariaveisCentralDialog(QDialog):
                 self.lst_dig.setCurrentRow(i)
                 break
 
-        QMessageBox.information(
-            self, "OK", f"Variável '{tag}' foi renomeada para '{novo}'."
-        )
+        QMessageBox.information(self, "OK", f"Variável '{tag}' foi renomeada para '{novo}'.")
+
 
     def _remover_digital(self):
         tag = self._sel(self.lst_dig)
@@ -3116,6 +2429,7 @@ class VariaveisCentralDialog(QDialog):
         self._popular_listas()
 
 
+
 # =========================================================
 #  CENTRAL DE LÓGICA + EDITOR GRAFCET (placeholder)
 # =========================================================
@@ -3126,7 +2440,6 @@ class GrafcetEditorDialog(QDialog):
       - Lista de 'Passos' e 'Transições' (texto simples)
     Guarda tudo em vg.set(f"logicas.{nome}", {"passos": [...], "transicoes": [...]})
     """
-
     def __init__(self, nome="", parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"Editor de Grafcet • {nome or '(novo)'}")
@@ -3143,38 +2456,29 @@ class GrafcetEditorDialog(QDialog):
 
         cols = QHBoxLayout()
         # passos
-        bx_p = QVBoxLayout()
-        bx_p.addWidget(QLabel("Passos (1 por linha)"))
+        bx_p = QVBoxLayout(); bx_p.addWidget(QLabel("Passos (1 por linha)"))
         self.txt_passos = QPlainTextEdit("\n".join(data.get("passos", [])))
         bx_p.addWidget(self.txt_passos)
         cols.addLayout(bx_p)
         # transições
-        bx_t = QVBoxLayout()
-        bx_t.addWidget(QLabel("Transições (1 por linha)"))
+        bx_t = QVBoxLayout(); bx_t.addWidget(QLabel("Transições (1 por linha)"))
         self.txt_trans = QPlainTextEdit("\n".join(data.get("transicoes", [])))
         bx_t.addWidget(self.txt_trans)
         cols.addLayout(bx_t)
         main.addLayout(cols)
 
         row = QHBoxLayout()
-        bt_ok = QPushButton("Salvar")
-        bt_ok.clicked.connect(self._salvar)
-        bt_cancel = QPushButton("Cancelar")
-        bt_cancel.clicked.connect(self.reject)
-        row.addWidget(bt_ok)
-        row.addWidget(bt_cancel)
+        bt_ok = QPushButton("Salvar"); bt_ok.clicked.connect(self._salvar)
+        bt_cancel = QPushButton("Cancelar"); bt_cancel.clicked.connect(self.reject)
+        row.addWidget(bt_ok); row.addWidget(bt_cancel)
         main.addLayout(row)
 
     def _salvar(self):
         nome = self.ed_nome.text().strip()
         if not nome:
             return
-        passos = [
-            l.strip() for l in self.txt_passos.toPlainText().splitlines() if l.strip()
-        ]
-        trans = [
-            l.strip() for l in self.txt_trans.toPlainText().splitlines() if l.strip()
-        ]
+        passos = [l.strip() for l in self.txt_passos.toPlainText().splitlines() if l.strip()]
+        trans = [l.strip() for l in self.txt_trans.toPlainText().splitlines() if l.strip()]
         self.vg.set(f"logicas.{nome}", {"passos": passos, "transicoes": trans})
         self.accept()
 
@@ -3184,7 +2488,6 @@ class GrafcetEditorDialog(QDialog):
     Editor simples de Grafcet (passos/transições como texto).
     Persiste em: vg["logicas"][nome] = {"passos":[...], "transicoes":[...]}
     """
-
     def __init__(self, nome="", parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"Editor de Grafcet • {nome or '(novo)'}")
@@ -3195,31 +2498,22 @@ class GrafcetEditorDialog(QDialog):
 
         main = QVBoxLayout(self)
         self.ed_nome = QLineEdit(nome)
-        main.addWidget(QLabel("Nome da lógica:"))
-        main.addWidget(self.ed_nome)
+        main.addWidget(QLabel("Nome da lógica:")); main.addWidget(self.ed_nome)
 
         cols = QHBoxLayout()
-        bx_p = QVBoxLayout()
-        bx_p.addWidget(QLabel("Passos (1 por linha)"))
+        bx_p = QVBoxLayout(); bx_p.addWidget(QLabel("Passos (1 por linha)"))
         self.txt_passos = QPlainTextEdit("\n".join(data.get("passos", [])))
-        bx_p.addWidget(self.txt_passos)
-        cols.addLayout(bx_p)
+        bx_p.addWidget(self.txt_passos); cols.addLayout(bx_p)
 
-        bx_t = QVBoxLayout()
-        bx_t.addWidget(QLabel("Transições (1 por linha)"))
+        bx_t = QVBoxLayout(); bx_t.addWidget(QLabel("Transições (1 por linha)"))
         self.txt_trans = QPlainTextEdit("\n".join(data.get("transicoes", [])))
-        bx_t.addWidget(self.txt_trans)
-        cols.addLayout(bx_t)
+        bx_t.addWidget(self.txt_trans); cols.addLayout(bx_t)
 
         main.addLayout(cols)
         row = QHBoxLayout()
-        bt_ok = QPushButton("Salvar")
-        bt_ok.clicked.connect(self._salvar)
-        bt_cancel = QPushButton("Cancelar")
-        bt_cancel.clicked.connect(self.reject)
-        row.addWidget(bt_ok)
-        row.addWidget(bt_cancel)
-        main.addLayout(row)
+        bt_ok = QPushButton("Salvar"); bt_ok.clicked.connect(self._salvar)
+        bt_cancel = QPushButton("Cancelar"); bt_cancel.clicked.connect(self.reject)
+        row.addWidget(bt_ok); row.addWidget(bt_cancel); main.addLayout(row)
 
     def _salvar(self):
         nome = self.ed_nome.text().strip()
@@ -3227,50 +2521,26 @@ class GrafcetEditorDialog(QDialog):
             return
         d = self.vg.get("logicas", {}) or {}
         d[nome] = {
-            "passos": [
-                l.strip()
-                for l in self.txt_passos.toPlainText().splitlines()
-                if l.strip()
-            ],
-            "transicoes": [
-                l.strip()
-                for l in self.txt_trans.toPlainText().splitlines()
-                if l.strip()
-            ],
+            "passos": [l.strip() for l in self.txt_passos.toPlainText().splitlines() if l.strip()],
+            "transicoes": [l.strip() for l in self.txt_trans.toPlainText().splitlines() if l.strip()],
         }
         self.vg.set("logicas", d)
         self.accept()
 
 
-import uuid
-
-from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QDialog,
-    QFormLayout,
-    QHBoxLayout,
-    QLineEdit,
-    QListWidget,
-    QMessageBox,
-    QPlainTextEdit,
-    QPushButton,
-    QSplitter,
-    QTabWidget,
-    QTreeWidget,
-    QTreeWidgetItem,
-    QVBoxLayout,
-    QWidget,
+    QDialog, QVBoxLayout, QTabWidget, QWidget, QHBoxLayout, QListWidget,
+    QPushButton, QSplitter, QTreeWidget, QTreeWidgetItem, QFormLayout,
+    QLineEdit, QPlainTextEdit, QCheckBox, QComboBox, QMessageBox
 )
+from PyQt5.QtCore import Qt
+import uuid
 
 # se já existir VariaveisGlobais no seu módulo
 from singleton import VariaveisGlobais
 
-
 class LogicaCentralDialog(QDialog):
     """Central com 3 abas: Grafcet, IQ/Ladder e Equações Analógicas (em árvore)."""
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Central de Lógica")
@@ -3278,52 +2548,34 @@ class LogicaCentralDialog(QDialog):
         self.vg = VariaveisGlobais()
 
         main = QVBoxLayout(self)
-        self.tabs = QTabWidget()
-        main.addWidget(self.tabs)
+        self.tabs = QTabWidget(); main.addWidget(self.tabs)
 
         # --- Aba GRAFCET ---
-        w_g = QWidget()
-        vg_layout = QVBoxLayout(w_g)
-        self.lst_g = QListWidget()
-        vg_layout.addWidget(self.lst_g)
+        w_g = QWidget(); vg_layout = QVBoxLayout(w_g)
+        self.lst_g = QListWidget(); vg_layout.addWidget(self.lst_g)
         row_g = QHBoxLayout()
-        bt_add_g = QPushButton("Adicionar")
-        bt_add_g.clicked.connect(self._add_g)
-        bt_edit_g = QPushButton("Editar")
-        bt_edit_g.clicked.connect(self._edit_g)
-        bt_del_g = QPushButton("Remover")
-        bt_del_g.clicked.connect(self._del_g)
-        row_g.addWidget(bt_add_g)
-        row_g.addWidget(bt_edit_g)
-        row_g.addWidget(bt_del_g)
+        bt_add_g = QPushButton("Adicionar"); bt_add_g.clicked.connect(self._add_g)
+        bt_edit_g = QPushButton("Editar");   bt_edit_g.clicked.connect(self._edit_g)
+        bt_del_g = QPushButton("Remover");   bt_del_g.clicked.connect(self._del_g)
+        row_g.addWidget(bt_add_g); row_g.addWidget(bt_edit_g); row_g.addWidget(bt_del_g)
         vg_layout.addLayout(row_g)
         self.tabs.addTab(w_g, "Grafcet")
 
         # --- Aba IQ/Ladder ---
-        w_iq = QWidget()
-        vi_layout = QVBoxLayout(w_iq)
-        self.lst_iq = QListWidget()
-        vi_layout.addWidget(self.lst_iq)
+        w_iq = QWidget(); vi_layout = QVBoxLayout(w_iq)
+        self.lst_iq = QListWidget(); vi_layout.addWidget(self.lst_iq)
         row_iq = QHBoxLayout()
-        bt_add_iq = QPushButton("Adicionar")
-        bt_add_iq.clicked.connect(self._add_iq)
-        bt_edit_iq = QPushButton("Editar")
-        bt_edit_iq.clicked.connect(self._edit_iq)
-        bt_del_iq = QPushButton("Remover")
-        bt_del_iq.clicked.connect(self._del_iq)
-        row_iq.addWidget(bt_add_iq)
-        row_iq.addWidget(bt_edit_iq)
-        row_iq.addWidget(bt_del_iq)
+        bt_add_iq = QPushButton("Adicionar"); bt_add_iq.clicked.connect(self._add_iq)
+        bt_edit_iq = QPushButton("Editar");   bt_edit_iq.clicked.connect(self._edit_iq)
+        bt_del_iq = QPushButton("Remover");   bt_del_iq.clicked.connect(self._del_iq)
+        row_iq.addWidget(bt_add_iq); row_iq.addWidget(bt_edit_iq); row_iq.addWidget(bt_del_iq)
         vi_layout.addLayout(row_iq)
         self.tabs.addTab(w_iq, "IQ/Ladder")
 
         # --- Equações Analógicas (Árvore) ---
-        w_eq = QWidget()
-        lay_eq = QVBoxLayout(w_eq)
-        split = QSplitter(Qt.Horizontal)
-        split.setChildrenCollapsible(False)
-        split.setStretchFactor(0, 1)
-        split.setStretchFactor(1, 3)
+        w_eq = QWidget(); lay_eq = QVBoxLayout(w_eq)
+        split = QSplitter(Qt.Horizontal); split.setChildrenCollapsible(False)
+        split.setStretchFactor(0, 1); split.setStretchFactor(1, 3)
         lay_eq.addWidget(split)
 
         # Árvore à esquerda
@@ -3334,46 +2586,33 @@ class LogicaCentralDialog(QDialog):
         split.addWidget(self.tree)
 
         # Formulário à direita
-        right = QWidget()
-        rlay = QVBoxLayout(right)
+        right = QWidget(); rlay = QVBoxLayout(right)
         form = QFormLayout()
         self.ed_nome = QLineEdit()
-        self.cmb_tipo_item = QComboBox()
-        self.cmb_tipo_item.addItems(["equation", "folder"])
-        self.ed_lhs = QLineEdit()
-        self.ed_lhs.setPlaceholderText("ex.: TI001.pv (assume .pv se omitir)")
-        self.txt_rhs = QPlainTextEdit()
-        self.txt_rhs.setPlaceholderText("expr: G(), passado(), CLAMP(), math, dt…")
-        self.chk_on = QCheckBox("Habilitado")
-        self.chk_on.setChecked(True)
+        self.cmb_tipo_item = QComboBox(); self.cmb_tipo_item.addItems(["equation", "constant", "folder"])
+        self.ed_lhs = QLineEdit(); self.ed_lhs.setPlaceholderText("ex.: TI001.pv (assume .pv se omitir)")
+        self.txt_rhs = QPlainTextEdit(); self.txt_rhs.setPlaceholderText("expr: G(), passado(), CLAMP(), math, dt…")
+        self.chk_on = QCheckBox("Habilitado"); self.chk_on.setChecked(True)
         form.addRow("Nome", self.ed_nome)
         form.addRow("Tipo", self.cmb_tipo_item)
-        form.addRow("LHS", self.ed_lhs)
-        form.addRow("RHS", self.txt_rhs)
-        form.addRow("", self.chk_on)
+        form.addRow("LHS",  self.ed_lhs)
+        form.addRow("RHS",  self.txt_rhs)
+        form.addRow("",     self.chk_on)
         rlay.addLayout(form)
 
         row = QHBoxLayout()
         self.bt_new_folder = QPushButton("Nova Pasta")
-        self.bt_new_eq = QPushButton("Nova Equação")
-        self.bt_dup = QPushButton("Duplicar")
-        self.bt_del = QPushButton("Excluir")
-        self.bt_up = QPushButton("↑")
-        self.bt_dn = QPushButton("↓")
-        self.bt_save = QPushButton("Salvar item")
-        self.bt_save_all = QPushButton("Salvar tudo")
-        for b in (
-            self.bt_new_folder,
-            self.bt_new_eq,
-            self.bt_dup,
-            self.bt_del,
-            self.bt_up,
-            self.bt_dn,
-        ):
+        self.bt_new_eq     = QPushButton("Nova Equação")
+        self.bt_dup        = QPushButton("Duplicar")
+        self.bt_del        = QPushButton("Excluir")
+        self.bt_up         = QPushButton("↑")
+        self.bt_dn         = QPushButton("↓")
+        self.bt_save       = QPushButton("Salvar item")
+        self.bt_save_all   = QPushButton("Salvar tudo")
+        for b in (self.bt_new_folder, self.bt_new_eq, self.bt_dup, self.bt_del, self.bt_up, self.bt_dn):
             row.addWidget(b)
         row.addStretch(1)
-        row.addWidget(self.bt_save)
-        row.addWidget(self.bt_save_all)
+        row.addWidget(self.bt_save); row.addWidget(self.bt_save_all)
         rlay.addLayout(row)
         split.addWidget(right)
 
@@ -3398,7 +2637,7 @@ class LogicaCentralDialog(QDialog):
 
     def _get_tree(self):
         """Obtém árvore; se não existir, cria vazia.
-        (Opcional) migra analog.eq plano para uma pasta 'Importado'."""
+           (Opcional) migra analog.eq plano para uma pasta 'Importado'."""
         tree = self.vg.get("analog.tree", None)
         if tree is None:
             # migração simples do formato antigo (se existir)
@@ -3406,59 +2645,33 @@ class LogicaCentralDialog(QDialog):
             children = []
             for e in flat:
                 if isinstance(e, dict) and e.get("lhs") and e.get("rhs"):
-                    children.append(
-                        {
-                            "id": str(uuid.uuid4()),
-                            "type": "equation",
-                            "name": e.get("nome", e.get("lhs")),
-                            "lhs": e.get("lhs"),
-                            "rhs": e.get("rhs"),
-                            "enabled": bool(e.get("habilitado", True)),
-                        }
-                    )
+                    children.append({
+                        "id": str(uuid.uuid4()), "type": "equation",
+                        "name": e.get("nome", e.get("lhs")),
+                        "lhs": e.get("lhs"), "rhs": e.get("rhs"),
+                        "enabled": bool(e.get("habilitado", True)),
+                    })
                 elif isinstance(e, str) and "=" in e:
                     L, R = [p.strip() for p in e.split("=", 1)]
-                    if "." not in L:
-                        L = f"{L}.pv"
-                    children.append(
-                        {
-                            "id": str(uuid.uuid4()),
-                            "type": "equation",
-                            "name": L,
-                            "lhs": L,
-                            "rhs": R,
-                            "enabled": True,
-                        }
-                    )
-            tree = {
-                "root": (
-                    [
-                        {
-                            "id": str(uuid.uuid4()),
-                            "type": "folder",
-                            "name": "Importado",
-                            "children": children,
-                        }
-                    ]
-                    if children
-                    else []
-                )
-            }
+                    if "." not in L: L = f"{L}.pv"
+                    children.append({
+                        "id": str(uuid.uuid4()), "type": "equation",
+                        "name": L, "lhs": L, "rhs": R, "enabled": True,
+                    })
+            tree = {"root": ([{"id": str(uuid.uuid4()), "type": "folder", "name": "Importado", "children": children}] if children else [])}
             self.vg.set("analog.tree", tree)
         return tree
 
     def _tree_load(self):
         self.tree.clear()
         tree = self._get_tree()
-
         def _mk(node, parent=None):
-            it = QTreeWidgetItem(parent or self.tree, [node.get("name", "(sem nome)")])
+            it = QTreeWidgetItem(parent or self.tree, [node.get("name","(sem nome)")])
             it.setData(0, Qt.UserRole, node)
             if node.get("type") == "folder":
                 it.setExpanded(True)
                 for ch in node.get("children", []) or []:
                     _mk(ch, it)
-
         for n in (tree or {}).get("root", []):
             _mk(n)
         if self.tree.topLevelItemCount():
@@ -3477,10 +2690,8 @@ class LogicaCentralDialog(QDialog):
                     node["children"].append(_node_from_item(it.child(i)))
             else:
                 node.setdefault("enabled", True)
-                node.setdefault("lhs", "")
-                node.setdefault("rhs", "")
+                node.setdefault("lhs", ""); node.setdefault("rhs", "")
             return node
-
         root = []
         for i in range(self.tree.topLevelItemCount()):
             root.append(_node_from_item(self.tree.topLevelItem(i)))
@@ -3488,147 +2699,109 @@ class LogicaCentralDialog(QDialog):
 
     def _on_tree_current_changed(self, cur: QTreeWidgetItem, prev: QTreeWidgetItem):
         if not cur:
-            self.ed_nome.clear()
-            self.ed_lhs.clear()
-            self.txt_rhs.clear()
-            self.chk_on.setChecked(True)
+            self.ed_nome.clear(); self.ed_lhs.clear(); self.txt_rhs.clear(); self.chk_on.setChecked(True)
             return
         node = cur.data(0, Qt.UserRole) or {}
-        self.ed_nome.setText(node.get("name", ""))
-        self.cmb_tipo_item.setCurrentText(node.get("type", "equation"))
-        is_folder = node.get("type") == "folder"
-        self.ed_lhs.setEnabled(not is_folder)
-        self.txt_rhs.setEnabled(not is_folder)
-        self.chk_on.setEnabled(not is_folder)
-        self.ed_lhs.setText("" if is_folder else node.get("lhs", ""))
-        self.txt_rhs.setPlainText("" if is_folder else node.get("rhs", ""))
+        self.ed_nome.setText(node.get("name",""))
+        self.cmb_tipo_item.setCurrentText(node.get("type","equation"))
+        is_folder = (node.get("type") == "folder")
+        self.ed_lhs.setEnabled(not is_folder); self.txt_rhs.setEnabled(not is_folder); self.chk_on.setEnabled(not is_folder)
+        self.ed_lhs.setText("" if is_folder else node.get("lhs",""))
+        self.txt_rhs.setPlainText("" if is_folder else node.get("rhs",""))
         self.chk_on.setChecked(True if is_folder else bool(node.get("enabled", True)))
 
-    def _apply_form_to_item(self, it: QTreeWidgetItem):
-        if not it:
-            return
+    def _apply_form(self, it):
+        if not it: return
         node = it.data(0, Qt.UserRole) or {}
-        node["name"] = self.ed_nome.text().strip() or node.get("name", "(sem nome)")
+        node["name"] = self.ed_nome.text().strip() or node.get("name","(sem nome)")
         node["type"] = self.cmb_tipo_item.currentText()
         if node["type"] == "equation":
-            lhs = self.ed_lhs.text().strip()
-            if lhs and "." not in lhs:
-                lhs = f"{lhs}.pv"
-            node["lhs"] = lhs
+            lhs, rhs = infer_lhs_rhs(self.txt_rhs.toPlainText(), self.ed_lhs.text().strip())
+            node["lhs"] = lhs; node["rhs"] = rhs; node["enabled"] = self.chk_on.isChecked()
+        elif node["type"] == "constant":
             node["rhs"] = self.txt_rhs.toPlainText().strip()
             node["enabled"] = self.chk_on.isChecked()
-        it.setText(0, node["name"])
-        it.setData(0, Qt.UserRole, node)
+        it.setText(0, node["name"]); it.setData(0, Qt.UserRole, node)
 
     def _on_new_folder(self):
         parent = self.tree.currentItem()
         # só permite criar dentro de pasta; se item atual não é pasta, cria no topo
         if not parent or (parent.data(0, Qt.UserRole) or {}).get("type") != "folder":
             parent = None
-        node = {
-            "id": str(uuid.uuid4()),
-            "type": "folder",
-            "name": "Nova Pasta",
-            "children": [],
-        }
-        it = QTreeWidgetItem(parent or self.tree, [node["name"]])
-        it.setData(0, Qt.UserRole, node)
+        node = {"id": str(uuid.uuid4()), "type": "folder", "name": "Nova Pasta", "children": []}
+        it = QTreeWidgetItem(parent or self.tree, [node["name"]]); it.setData(0, Qt.UserRole, node)
         self.tree.setCurrentItem(it)
 
     def _on_new_equation(self):
         parent = self.tree.currentItem()
         if not parent or (parent.data(0, Qt.UserRole) or {}).get("type") != "folder":
             parent = None
-        node = {
-            "id": str(uuid.uuid4()),
-            "type": "equation",
-            "name": "Nova Equação",
-            "lhs": "",
-            "rhs": "",
-            "enabled": True,
-        }
-        it = QTreeWidgetItem(parent or self.tree, [node["name"]])
-        it.setData(0, Qt.UserRole, node)
+        node = {"id": str(uuid.uuid4()), "type": "equation", "name": "Nova Equação", "lhs": "", "rhs": "", "enabled": True}
+        it = QTreeWidgetItem(parent or self.tree, [node["name"]]); it.setData(0, Qt.UserRole, node)
         self.tree.setCurrentItem(it)
 
     def _on_dup_node(self):
         it = self.tree.currentItem()
-        if not it:
-            return
+        if not it: return
         node = dict(it.data(0, Qt.UserRole) or {})
         node["id"] = str(uuid.uuid4())
         node["name"] = f'{node.get("name","(sem nome)")} (cópia)'
         parent = it.parent() or self.tree.invisibleRootItem()
-        newit = QTreeWidgetItem([node["name"]])
-        newit.setData(0, Qt.UserRole, node)
-        parent.addChild(newit)
-        self.tree.setCurrentItem(newit)
+        newit = QTreeWidgetItem([node["name"]]); newit.setData(0, Qt.UserRole, node)
+        parent.addChild(newit); self.tree.setCurrentItem(newit)
 
     def _on_del_node(self):
         it = self.tree.currentItem()
-        if not it:
-            return
-        if (
-            QMessageBox.question(self, "Excluir", f"Excluir '{it.text(0)}'?")
-            != QMessageBox.Yes
-        ):
+        if not it: return
+        if QMessageBox.question(self, "Excluir", f"Excluir '{it.text(0)}'?") != QMessageBox.Yes:
             return
         parent = it.parent() or self.tree.invisibleRootItem()
         parent.removeChild(it)
 
     def _move_node(self, delta: int):
         it = self.tree.currentItem()
-        if not it:
-            return
+        if not it: return
         parent = it.parent() or self.tree.invisibleRootItem()
         idx = parent.indexOfChild(it)
         new_idx = idx + delta
-        if new_idx < 0 or new_idx >= parent.childCount():
-            return
-        parent.removeChild(it)
-        parent.insertChild(new_idx, it)
+        if new_idx < 0 or new_idx >= parent.childCount(): return
+        parent.removeChild(it); parent.insertChild(new_idx, it)
         self.tree.setCurrentItem(it)
 
     def _ensure_analog_tag(self, base: str):
         """Fallback local caso você não tenha ensure_analog_tag() global."""
         try:
             from functions import ensure_analog_tag as _ext_ensure
-
             _ext_ensure(self.vg, base)
             return
         except Exception:
             pass
-        if not base:
-            return
+        if not base: return
         base = str(base).upper()
-        for campo, default in (("pv", 0.0), ("sp", 0.0), ("mv", 0.0)):
+        for campo, default in (("pv",0.0),("sp",0.0),("mv",0.0)):
             if self.vg.get(f"{base}.{campo}") is None:
                 self.vg.set(f"{base}.{campo}", default)
         if (self.vg.get(f"{base}.tipo") or "ANA").upper() in (None, "REM"):
-            self.vg.set(f"{base}.tipo", "ANA")
+            self.vg.set(f"{base}.tipo","ANA")
         conf = self.vg.get(f"{base}.controle", {}) or {}
-        conf.setdefault("tipo", "Temperatura")
-        conf.setdefault("pv_min", 0.0)
-        conf.setdefault("pv_max", 100.0)
+        conf.setdefault("tipo","Temperatura")
+        conf.setdefault("pv_min",0.0); conf.setdefault("pv_max",100.0)
         self.vg.set(f"{base}.controle", conf)
 
     def _save_item(self):
         it = self.tree.currentItem()
-        if not it:
-            return
+        if not it: return
         self._apply_form_to_item(it)
         node = it.data(0, Qt.UserRole) or {}
         if node.get("type") == "equation":
-            base = (node.get("lhs", "").split(".", 1)[0] or "").upper()
-            if base:
-                self._ensure_analog_tag(base)
+            base = (node.get("lhs","").split(".",1)[0] or "").upper()
+            if base: self._ensure_analog_tag(base)
         self._tree_dump()
         QMessageBox.information(self, "Salvo", "Item salvo.")
 
     def _save_all(self):
         it = self.tree.currentItem()
-        if it:
-            self._apply_form_to_item(it)
+        if it: self._apply_form_to_item(it)
         self._tree_dump()
         QMessageBox.information(self, "Salvo", "Árvore salva.")
 
@@ -3646,10 +2819,9 @@ class LogicaCentralDialog(QDialog):
             self.lst_g.addItem(k)
         # iq
         self.lst_iq.clear()
-        for b in sorted(self.vg.get("iq", []) or [], key=lambda x: x.get("nome", "")):
-            nm = b.get("nome", "")
-            if nm:
-                self.lst_iq.addItem(nm)
+        for b in sorted(self.vg.get("iq", []) or [], key=lambda x: x.get("nome","")):
+            nm = b.get("nome","")
+            if nm: self.lst_iq.addItem(nm)
         # árvore já está carregada em _tree_load()
 
     def _add_g(self):
@@ -3665,8 +2837,7 @@ class LogicaCentralDialog(QDialog):
 
     def _del_g(self):
         nome = self._sel(self.lst_g)
-        if not nome:
-            return
+        if not nome: return
         d = self.vg.get("logicas", {}) or {}
         if nome in d:
             d.pop(nome, None)
@@ -3687,20 +2858,17 @@ class LogicaCentralDialog(QDialog):
 
     def _del_iq(self):
         nome = self._sel(self.lst_iq)
-        if not nome:
-            return
+        if not nome: return
         blocos = self.vg.get("iq", []) or []
         blocos = [b for b in blocos if b.get("nome") != nome]
         self.vg.set("iq", blocos)
         self._reload()
-
 
 class IQEditorDialog(QDialog):
     """
     Editor de bloco IQ/Ladder (equações booleanas).
     Persiste em vg["iq"] = [ { "nome":str, "base":str, "equacoes":[str, ...] }, ... ]
     """
-
     def __init__(self, nome="", parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"Editor IQ • {nome or '(novo)'}")
@@ -3710,10 +2878,7 @@ class IQEditorDialog(QDialog):
 
         # carrega bloco, se existir
         blocos = self.vg.get("iq", []) or []
-        cur = next(
-            (b for b in blocos if b.get("nome") == nome),
-            {"nome": nome, "base": "", "equacoes": []},
-        )
+        cur = next((b for b in blocos if b.get("nome") == nome), {"nome": nome, "base": "", "equacoes": []})
 
         main = QVBoxLayout(self)
 
@@ -3725,22 +2890,14 @@ class IQEditorDialog(QDialog):
         main.addWidget(QLabel("Base (prefixo para tokens sem ponto, ex.: BOMBA01):"))
         main.addWidget(self.ed_base)
 
-        main.addWidget(
-            QLabel(
-                "Equações (uma por linha) • Ex.:\nBOMBA01.PV0 = (CMD_LIGA & PERMISS_OK & !TRIP) | (BOMBA01.PV0 & !CMD_DESLIGA & !TRIP)"
-            )
-        )
+        main.addWidget(QLabel("Equações (uma por linha) • Ex.:\nBOMBA01.PV0 = (CMD_LIGA & PERMISS_OK & !TRIP) | (BOMBA01.PV0 & !CMD_DESLIGA & !TRIP)"))
         self.txt_eq = QPlainTextEdit("\n".join(cur.get("equacoes", [])))
         main.addWidget(self.txt_eq)
 
         row = QHBoxLayout()
-        bt_ok = QPushButton("Salvar")
-        bt_ok.clicked.connect(self._salvar)
-        bt_cancel = QPushButton("Cancelar")
-        bt_cancel.clicked.connect(self.reject)
-        row.addStretch(1)
-        row.addWidget(bt_ok)
-        row.addWidget(bt_cancel)
+        bt_ok = QPushButton("Salvar"); bt_ok.clicked.connect(self._salvar)
+        bt_cancel = QPushButton("Cancelar"); bt_cancel.clicked.connect(self.reject)
+        row.addStretch(1); row.addWidget(bt_ok); row.addWidget(bt_cancel)
         main.addLayout(row)
 
     def _salvar(self):
@@ -3754,7 +2911,7 @@ class IQEditorDialog(QDialog):
         blocos = self.vg.get("iq", []) or []
 
         # substitui se já existir, senão adiciona
-        idx = next((i for i, b in enumerate(blocos) if b.get("nome") == nome), -1)
+        idx = next((i for i,b in enumerate(blocos) if b.get("nome")==nome), -1)
         payload = {"nome": nome, "base": base, "equacoes": eqs}
         if idx >= 0:
             blocos[idx] = payload
@@ -3762,3 +2919,4 @@ class IQEditorDialog(QDialog):
             blocos.append(payload)
         self.vg.set("iq", blocos)
         self.accept()
+
