@@ -1,4 +1,4 @@
-repos:
+﻿repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -32,7 +32,7 @@ repos:
     hooks:
       - id: flake8
         name: flake8 (critical)
-        args: ["--select=E9,F63,F7,F82"]
+        args: ["--select=E9,F63,F7,F82,F401,F841"]
 
   - repo: https://github.com/pycqa/flake8
     rev: 7.3.0
