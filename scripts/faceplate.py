@@ -1,4 +1,4 @@
-import sys
+﻿import sys
 
 from PyQt5.QtCore import QPointF, Qt, QTimer
 from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
@@ -19,12 +19,12 @@ from PyQt5.QtWidgets import (
 from singleton import VariaveisGlobais
 
 # ------------------------------
-# Utilitários visuais
+# UtilitÃ¡rios visuais
 # ------------------------------
 
 
 class ValueInputDialog(QDialog):
-    """Janela para entrada de valores numéricos (campo preto, texto verde)."""
+    """Janela para entrada de valores numÃ©ricos (campo preto, texto verde)."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -56,7 +56,7 @@ class ValueInputDialog(QDialog):
 
 
 class LampWidget(QWidget):
-    """Lâmpada de estado para variáveis digitais."""
+    """LÃ¢mpada de estado para variÃ¡veis digitais."""
 
     def __init__(self, diameter=26):
         super().__init__()
@@ -89,7 +89,7 @@ class LampWidget(QWidget):
 
 
 class LevelIndicator(QWidget):
-    """Indicador vertical com barra PV, SP e MV (analógico)."""
+    """Indicador vertical com barra PV, SP e MV (analÃ³gico)."""
 
     def __init__(self, pv=30, sp=60, mv=40, mlo=None, mhi=None):
         super().__init__()
@@ -122,7 +122,7 @@ class LevelIndicator(QWidget):
         def percent_to_y(percent):
             return margin + ((100 - percent) / 100.0) * (height - 2 * margin)
 
-        # SP seta amarela à esquerda
+        # SP seta amarela Ã  esquerda
         sp_y = percent_to_y(self.sp)
         sp_triangle = QPolygonF(
             [
@@ -135,7 +135,7 @@ class LevelIndicator(QWidget):
         painter.setPen(Qt.NoPen)
         painter.drawPolygon(sp_triangle)
 
-        # MV seta vermelha à direita
+        # MV seta vermelha Ã  direita
         mv_y = percent_to_y(self.mv)
         mv_triangle = QPolygonF(
             [
@@ -147,7 +147,7 @@ class LevelIndicator(QWidget):
         painter.setBrush(QColor("red"))
         painter.drawPolygon(mv_triangle)
 
-        # Barra de escala à direita
+        # Barra de escala Ã  direita
         line_x = int(width * 0.85)
         pen_scale = QPen(QColor("#00AEEF"), 2)
         painter.setPen(pen_scale)
@@ -176,7 +176,7 @@ class LevelIndicator(QWidget):
 
 
 class BaseFaceplate(QWidget):
-    """Base comum para faceplates, com cabeçalho e modo."""
+    """Base comum para faceplates, com cabeÃ§alho e modo."""
 
     def __init__(self, tag_name: str):
         super().__init__()
@@ -251,7 +251,7 @@ class BaseFaceplate(QWidget):
 
 
 # ------------------------------
-# Faceplate ANALÓGICO
+# Faceplate ANALÃ“GICO
 # ------------------------------
 
 
@@ -329,10 +329,10 @@ class AnalogFaceplate(BaseFaceplate):
 
 
 # =========================
-# Faceplate DIGITAL (mínimo)
+# Faceplate DIGITAL (mÃ­nimo)
 # =========================
 class DigitalFaceplate(QWidget):
-    """ON/OFF com lâmpada e botões; respeita MAN/AUT."""
+    """ON/OFF com lÃ¢mpada e botÃµes; respeita MAN/AUT."""
 
     def __init__(self, tag_name="DI001"):
         super().__init__()
@@ -414,7 +414,7 @@ class DigitalFaceplate(QWidget):
 
                 QMessageBox.warning(
                     self,
-                    "Modo indisponível",
+                    "Modo indisponÃ­vel",
                     f"Sem 'fonte_cascata' em {self.tag_name}.",
                 )
                 return
@@ -451,29 +451,20 @@ class DigitalFaceplate(QWidget):
         self.bt_sp_off.setEnabled(aut)
 
 
-# =========================
-# Faceplate DIGITAL (status PV0..PV5)
-# =========================
-from PyQt5.QtWidgets import (  # (garante imports básicos já existentes)
-    QPlainTextEdit,
-    QTabWidget,
-)
-
-
 class DigitalStatusFaceplate(QWidget):
     """
     Layout:
-      ┌────────────────────────┐  cabeçalho azul com TAG
-      │        <TAG>           │
-      └────────────────────────┘
-      ┌────────────────────────┐  painel preto
-      │ [ PV0 ]                │  até 6 “botões” (QPushButton) creme
-      │ [ PV1 ]                │  cada um mostra rótulo de acordo com valor 0/1
-      │ [ PV2 ]                │  invisível se não for usado
-      │ [ PV3 ]                │
-      │ [ PV4 ]                │
-      │ [ PV5 ]                │
-      └────────────────────────┘
+      â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  cabeÃ§alho azul com TAG
+      â”‚        <TAG>           â”‚
+      â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+      â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  painel preto
+      â”‚ [ PV0 ]                â”‚  atÃ© 6 â€œbotÃµesâ€ (QPushButton) creme
+      â”‚ [ PV1 ]                â”‚  cada um mostra rÃ³tulo de acordo com valor 0/1
+      â”‚ [ PV2 ]                â”‚  invisÃ­vel se nÃ£o for usado
+      â”‚ [ PV3 ]                â”‚
+      â”‚ [ PV4 ]                â”‚
+      â”‚ [ PV5 ]                â”‚
+      â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
     Config via singleton:
       vg[f"{tag}.tipo"] = "DIG"
       vg[f"{tag}.digi.map"] =
@@ -483,12 +474,12 @@ class DigitalStatusFaceplate(QWidget):
            ...
          }
     Valores lidos/escritos em:
-      vg[f"{tag}.PV{i}"] ∈ {0,1}
+      vg[f"{tag}.PV{i}"] âˆˆ {0,1}
     """
 
     def __init__(self, tag_name="DI001"):
         super().__init__()
-        self._flash_active = set()  # índices de PV piscando por 1s
+        self._flash_active = set()  # Ã­ndices de PV piscando por 1s
         self.tag_name = tag_name
         self.vg = VariaveisGlobais()
 
@@ -500,7 +491,7 @@ class DigitalStatusFaceplate(QWidget):
         root.setContentsMargins(6, 6, 6, 6)
         root.setSpacing(6)
 
-        # Cabeçalho azul
+        # CabeÃ§alho azul
         head = QLabel(self.tag_name)
         head.setAlignment(Qt.AlignCenter)
         head.setStyleSheet(
@@ -517,7 +508,7 @@ class DigitalStatusFaceplate(QWidget):
         v.setSpacing(18)
         root.addWidget(panel, 1)
 
-        # Preparar 6 “cards” creme
+        # Preparar 6 â€œcardsâ€ creme
         self.rows = []
         for i in range(15):
             btn = QPushButton(f"PV{i}")
@@ -531,7 +522,7 @@ class DigitalStatusFaceplate(QWidget):
             v.addWidget(btn)
             self.rows.append(btn)
 
-        # Timer de atualização
+        # Timer de atualizaÃ§Ã£o
         self._t = QTimer(self)
         self._t.timeout.connect(self._tick)
         self._t.start(300)
@@ -564,7 +555,7 @@ class DigitalStatusFaceplate(QWidget):
 
     def _confirm(self, msg: str) -> bool:
         ans = QMessageBox.question(
-            self, "Confirmação", msg, QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+            self, "ConfirmaÃ§Ã£o", msg, QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
         return ans == QMessageBox.Yes
 
@@ -575,15 +566,15 @@ class DigitalStatusFaceplate(QWidget):
         pulse_mode = bool(cfg.get("pulse", True if i in (0, 1) else False))
         need_confirm = bool(cfg.get("confirm", False))
 
-        # texto para confirmação
+        # texto para confirmaÃ§Ã£o
         text0 = cfg.get("text0", f"PV{i}")
         text1 = cfg.get("text1", f"PV{i}")
         cur = self._bget(f"{tag}.PV{i}", 0)
 
-        # Confirmação
+        # ConfirmaÃ§Ã£o
         if need_confirm:
             if pulse_mode:
-                if not self._confirm(f'Deseja acionar o Botão "{text0}"?'):
+                if not self._confirm(f'Deseja acionar o BotÃ£o "{text0}"?'):
                     return
             else:
                 txt_dest = text0 if cur else text1
@@ -591,11 +582,11 @@ class DigitalStatusFaceplate(QWidget):
                     return
 
         if pulse_mode:
-            # Pulso direto no próprio PV
+            # Pulso direto no prÃ³prio PV
             self._pulse(f"{tag}.PV{i}", ms=800)
             self._flash(i, 300)
         else:
-            # Alternância direta
+            # AlternÃ¢ncia direta
             novo = 0 if cur else 1
             self.vg.set(f"{tag}.PV{i}", novo)
             self._flash(i, 300)
@@ -617,7 +608,7 @@ class DigitalStatusFaceplate(QWidget):
             text0 = cfg.get("text0", f"PV{i}")
             text1 = cfg.get("text1", text0 or f"PV{i}")
             btn.setText(text1 if val else text0)
-            # Cores padrão (ou as do seu map color0/color1, se já usa)
+            # Cores padrÃ£o (ou as do seu map color0/color1, se jÃ¡ usa)
             bg0 = cfg.get("color0") or "#FFF8E1"
             bg1 = cfg.get("color1") or "#E8FFE8"
             fg0 = "#666"
@@ -644,32 +635,32 @@ class DigitalStatusFaceplate(QWidget):
 
 
 # =========================
-# Factory: abre analógico ou digital
+# Factory: abre analÃ³gico ou digital
 # =========================
 def open_faceplate(tag_name: str) -> QWidget:
     vg = VariaveisGlobais()
     tipo = str(vg.get(f"{tag_name}.tipo", "ANA") or "ANA").upper()
     if tipo.startswith("D"):
-        # assegura estrutura padrão
+        # assegura estrutura padrÃ£o
         if vg.get(f"{tag_name}.digi.map", None) is None:
             vg.set(
                 f"{tag_name}.digi.map",
                 {
                     "PV0": {"text0": "DESLIGADO", "text1": "LIGADO", "visible": True},
                     "PV1": {"text0": "", "text1": "ALARME", "visible": False},
-                    "PV2": {"text0": "MANUAL", "text1": "AUTOMÁTICO", "visible": False},
+                    "PV2": {"text0": "MANUAL", "text1": "AUTOMÃTICO", "visible": False},
                     "PV3": {"text0": "CAMPO", "text1": "CCI", "visible": False},
                     "PV4": {"text0": "PV4", "text1": "PV4", "visible": False},
                     "PV5": {"text0": "PV5", "text1": "PV5", "visible": False},
                 },
             )
         return DigitalStatusFaceplate(tag_name)
-    # analógico padrão já existente
+    # analÃ³gico padrÃ£o jÃ¡ existente
     return AnalogFaceplate(tag_name)
 
 
 # ------------------------------
-# Execução direta p/ teste rápido
+# ExecuÃ§Ã£o direta p/ teste rÃ¡pido
 # ------------------------------
 
 if __name__ == "__main__":
@@ -677,7 +668,7 @@ if __name__ == "__main__":
 
     # Exemplo: defina tipo e valores iniciais
     vg = VariaveisGlobais()
-    # Comentário: troque para "DIG" para testar o digital
+    # ComentÃ¡rio: troque para "DIG" para testar o digital
     vg.set("X1001.tipo", "DIG")
     vg.set("X1001.pv", 1)
     vg.set("X1001.sp", 0)
