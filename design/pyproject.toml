@@ -1,0 +1,12 @@
+[project]
+name = "bricsim-design"
+version = "0.1.0"
+description = "BRICSim design/editor UI"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["PyQt5"]
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools.packages.find]
+where = ["."]
