@@ -1,11 +1,10 @@
-import json
+﻿import json
 import os
 import sys
 
 from canvas_simulator import (
     LogicaCentralDialog,
     SimuladorCanvas,
-    TouchAreaItem,
     VariaveisCentralDialog,
 )
 from functions import (
@@ -33,6 +32,13 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+# scripts/main.py (ou design/ui/main_window.py)
+from simulator.core.simulation_runner import SimulationRunner
+from simulator.ui.adapters import QtDialogs, QtTimer
+
+runner = SimulationRunner(dialogs=QtDialogs(parent=None), timer=QtTimer())
+runner.start()
+
 base_path = os.path.dirname(__file__)
 
 
@@ -42,11 +48,11 @@ class SimuladorMain(QMainWindow):
         self.setWindowTitle("BRICSSIM Simulador")
         self.resize(1200, 800)
         self.modo_modelo = True
-        # --- estado da simulação ---
+        # --- estado da simulaÃ§Ã£o ---
         self.simulacao_rodando = False
         self.simulacao_pausada = False
 
-        # aplica visibilidade inicial dos botões
+        # aplica visibilidade inicial dos botÃµes
 
         # ===== Painel Superior =====
         self.top_bar = QWidget()
@@ -59,12 +65,12 @@ class SimuladorMain(QMainWindow):
         self.tab_widget = QTabWidget()
         self.sidebar.setMaximumWidth(150)
         self.sidebar.currentRowChanged.connect(self.trocar_aba_sidebar)
-        self.sidebar.setDragDropMode(QListWidget.InternalMove)  # permitir reordenação
+        self.sidebar.setDragDropMode(QListWidget.InternalMove)  # permitir reordenaÃ§Ã£o
         self.sidebar.setContextMenuPolicy(Qt.CustomContextMenu)
         self.sidebar.customContextMenuRequested.connect(self.menu_sidebar)
 
-        # ===== Botões ===
-        self.btn_iniciar = QPushButton("SIMULAÇÃO")
+        # ===== BotÃµes ===
+        self.btn_iniciar = QPushButton("SIMULAÃ‡ÃƒO")
         self.btn_iniciar.setIcon(QIcon(os.path.join(base_path, "icons", "play.svg")))
         self.btn_iniciar.setIconSize(QSize(32, 32))
         self.btn_pausar = QPushButton("PAUSAR")
@@ -99,13 +105,13 @@ class SimuladorMain(QMainWindow):
         self.btn_modo = QPushButton("MODELO")
         self.btn_modo.setIcon(QIcon(os.path.join(base_path, "icons", "gear.svg")))
         self.btn_modo.setIconSize(QSize(32, 32))
-        self.btn_area_toque = QPushButton("Área de Toque")
-        # >>> NOVO: botões pedidos
+        self.btn_area_toque = QPushButton("Ãrea de Toque")
+        # >>> NOVO: botÃµes pedidos
         self.btn_add_var_dig = QPushButton("Var. Digital")
-        self.btn_central_vars = QPushButton("Central de Variáveis")
-        self.btn_central_log = QPushButton("Central de Lógica")
+        self.btn_central_vars = QPushButton("Central de VariÃ¡veis")
+        self.btn_central_log = QPushButton("Central de LÃ³gica")
         self.btn_tela_cheia = QPushButton("TELA CHEIA")
-        self.btn_tela_cheia.setVisible(False)  # começa oculto
+        self.btn_tela_cheia.setVisible(False)  # comeÃ§a oculto
 
         top_layout.addWidget(self.btn_iniciar)
         top_layout.addWidget(self.btn_pausar)
@@ -118,18 +124,18 @@ class SimuladorMain(QMainWindow):
         top_layout.addWidget(self.btn_tela_cheia)
         top_layout.addStretch()
         top_layout.addWidget(self.btn_area_toque)
-        # >>> NOVO: posiciona logo ao lado do botão de touch_area
+        # >>> NOVO: posiciona logo ao lado do botÃ£o de touch_area
         top_layout.addWidget(self.btn_add_var_dig)
         top_layout.addWidget(self.btn_central_vars)
         top_layout.addWidget(self.btn_central_log)
         top_layout.addWidget(self.btn_salvar_mod)
         top_layout.addWidget(self.btn_modo)
 
-        # ===== Rodapé =====
+        # ===== RodapÃ© =====
         status_bar = QStatusBar()
         self.setStatusBar(status_bar)
         self.coord_label = QLabel("X: ---  Y: ---")
-        self.modo_label = QLabel("Modo: VISUALIZAÇÃO")
+        self.modo_label = QLabel("Modo: VISUALIZAÃ‡ÃƒO")
         self.cmd_input = QLineEdit()
         self.cmd_input.setPlaceholderText("Digite um comando e pressione Enter")
         status_bar.addWidget(self.coord_label)
@@ -152,7 +158,7 @@ class SimuladorMain(QMainWindow):
 
         self.setCentralWidget(central_widget)
 
-        # ===== Conexões =====
+        # ===== ConexÃµes =====
         self.btn_iniciar.clicked.connect(self.iniciar_simulacao)
         self.btn_pausar.clicked.connect(self.pausar_simulacao)
         self.btn_parar.clicked.connect(self.parar_simulacao)
@@ -175,10 +181,10 @@ class SimuladorMain(QMainWindow):
         if canvas and hasattr(canvas, "adicionar_area_toque"):
             canvas.adicionar_area_toque()
         else:
-            print("⚠ Nenhuma tela aberta para adicionar área de toque")
+            print("âš  Nenhuma tela aberta para adicionar Ã¡rea de toque")
             self.atualizar_botoes()
 
-    # ===== Navegação =====
+    # ===== NavegaÃ§Ã£o =====
     def trocar_aba_sidebar(self, row):
         if row >= 0:
             self.tab_widget.setCurrentIndex(row)
@@ -221,11 +227,11 @@ class SimuladorMain(QMainWindow):
         if hasattr(novo_canvas, "aplicar_flags_por_modo"):
             novo_canvas.aplicar_flags_por_modo()
 
-    # ===== Modo e botões =====
+    # ===== Modo e botÃµes =====
     def alternar_modo(self):
         self.modo_modelo = not self.modo_modelo
 
-        # atualiza rótulo/botão
+        # atualiza rÃ³tulo/botÃ£o
         if self.modo_modelo:
             self.btn_modo.setText("MODO MODELO")
             self.btn_modo.setIcon(QIcon(os.path.join(base_path, "icons", "gear.svg")))
@@ -236,11 +242,11 @@ class SimuladorMain(QMainWindow):
                 for var in getattr(canvas, "variaveis", []):
                     var.setPlainText(getattr(var, "tag", ""))
         else:
-            self.btn_modo.setText("SIMULAÇÃO")
+            self.btn_modo.setText("SIMULAÃ‡ÃƒO")
             self.btn_modo.setIcon(
                 QIcon(os.path.join(base_path, "icons", "keyboard.svg"))
             )
-            self.modo_label.setText("SIMULAÇÃO")
+            self.modo_label.setText("SIMULAÃ‡ÃƒO")
 
         # aplica flags em TODOS os canvases existentes
         for i in range(self.tab_widget.count()):
@@ -261,14 +267,14 @@ class SimuladorMain(QMainWindow):
         self.btn_abrir_sim.setVisible(self.modo_modelo)
         self.btn_area_toque.setVisible(self.modo_modelo)
 
-        # grupo de execução (só no modo simulação)
+        # grupo de execuÃ§Ã£o (sÃ³ no modo simulaÃ§Ã£o)
         if self.modo_modelo:
             self.btn_iniciar.setVisible(False)
             self.btn_pausar.setVisible(False)
             self.btn_parar.setVisible(False)
             return
 
-        # estamos em modo simulação
+        # estamos em modo simulaÃ§Ã£o
         if not self.simulacao_rodando and not self.simulacao_pausada:
             # parado
             self.btn_iniciar.setText("INICIAR")
@@ -310,9 +316,9 @@ class SimuladorMain(QMainWindow):
         for nome, widget in zip(nova_ordem, widgets):
             self.tab_widget.addTab(widget, nome)
 
-    # ===== Simulação =====
+    # ===== SimulaÃ§Ã£o =====
     def iniciar_simulacao(self):
-        print("Iniciar Simulação")
+        print("Iniciar SimulaÃ§Ã£o")
 
         from singleton import VariaveisGlobais
 
@@ -322,7 +328,7 @@ class SimuladorMain(QMainWindow):
         if not canvas:
             return
 
-        # (opcional) garantir histórico para .pv/.sp/.mv das variáveis que estão na tela
+        # (opcional) garantir histÃ³rico para .pv/.sp/.mv das variÃ¡veis que estÃ£o na tela
         if hasattr(canvas, "variaveis"):
             for var in canvas.variaveis:
                 for sufixo in (".pv", ".sp", ".mv"):
@@ -330,23 +336,23 @@ class SimuladorMain(QMainWindow):
                     if len(vg.hist(chave)) == 0:
                         vg.set(chave, 0)
 
-        # liga a simulação
+        # liga a simulaÃ§Ã£o
         canvas.simulacao_rodando = True
 
         # >>> RELIGA OS TIMERS SE ESTIVEREM PARADOS <<<
         if hasattr(canvas, "timer_controle") and not canvas.timer_controle.isActive():
-            canvas.timer_controle.start(200)  # mesma cadência definida no canvas
+            canvas.timer_controle.start(200)  # mesma cadÃªncia definida no canvas
         if hasattr(canvas, "timer_interface") and not canvas.timer_interface.isActive():
-            canvas.timer_interface.start(1000)  # mesma cadência definida no canvas
+            canvas.timer_interface.start(1000)  # mesma cadÃªncia definida no canvas
 
     def pausar_simulacao(self):
-        print("Pausar Simulação")
+        print("Pausar SimulaÃ§Ã£o")
         canvas = self.tab_widget.currentWidget()
         if canvas:
             canvas.simulacao_rodando = False
 
     def parar_simulacao(self):
-        print("Parar Simulação")
+        print("Parar SimulaÃ§Ã£o")
         canvas = self.tab_widget.currentWidget()
         if not canvas:
             return
@@ -372,15 +378,15 @@ class SimuladorMain(QMainWindow):
             self.top_bar.setVisible(True)
         super().keyPressEvent(event)
 
-    # >>> NOVO: insere rapidamente uma variável digital padrão
+    # >>> NOVO: insere rapidamente uma variÃ¡vel digital padrÃ£o
     def _inserir_variavel_digital_modelo(self):
         canvas = self.tab_widget.currentWidget()
         if not canvas:
-            print("⚠ Nenhuma tela aberta")
+            print("âš  Nenhuma tela aberta")
             return
         canvas.inserir_variavel_digital_modelo()
 
-    # >>> NOVO: abre a Central de Variáveis (abas Analógicas/Digitais)
+    # >>> NOVO: abre a Central de VariÃ¡veis (abas AnalÃ³gicas/Digitais)
     def _abrir_central_variaveis(self):
         canvas = self.tab_widget.currentWidget()
         if not canvas:
@@ -388,13 +394,13 @@ class SimuladorMain(QMainWindow):
         self._dlg_vars = VariaveisCentralDialog(canvas, parent=self)
         self._dlg_vars.show()
 
-    # >>> NOVO: abre a Central de Lógica (lista → Grafcet)
+    # >>> NOVO: abre a Central de LÃ³gica (lista â†’ Grafcet)
     def _abrir_central_logica(self):
         self._dlg_log = LogicaCentralDialog(parent=self)
         self._dlg_log.show()
 
     def atualizar_botoes(self):
-        # mantém sua lógica e adiciona visibilidade no modo
+        # mantÃ©m sua lÃ³gica e adiciona visibilidade no modo
         self.sidebar.setVisible(self.modo_modelo)
         # ...
         self.btn_area_toque.setVisible(self.modo_modelo)

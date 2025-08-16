@@ -1,0 +1,7 @@
+[importlinter]
+root_package = design
+
+[contract:layers_design]
+type = layers
+layers =
+    design.ui

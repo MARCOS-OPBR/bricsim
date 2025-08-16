@@ -1,8 +1,7 @@
-import os
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ICON_DIR = os.path.join(BASE_DIR, "icons")
-
-
-def icon_path(filename):
-    return os.path.join(ICON_DIR, filename)
+"""
+Shim de compatibilidade: módulo movido para design.ui.resources.
+Este arquivo será depreciado em versões futuras.
+"""
+from warnings import warn as _warn
+_warn("Módulo movido para design.ui.resources", DeprecationWarning, stacklevel=2)
+from design.ui.resources import *  # noqa: F401,F403

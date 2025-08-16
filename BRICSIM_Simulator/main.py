@@ -1,8 +1,7 @@
 """
-Shim de compatibilidade: reexporta de scripts.
+Shim de compatibilidade: módulo movido para design.ui.main.
+Este arquivo será depreciado em versões futuras.
 """
-
-from warnings import warn
-
-warn("Módulo movido para scripts/main.py", DeprecationWarning, stacklevel=2)
-from scripts.main import *  # noqa: F401,F403
+from warnings import warn as _warn
+_warn("Módulo movido para design.ui.main", DeprecationWarning, stacklevel=2)
+from design.ui.main import *  # noqa: F401,F403

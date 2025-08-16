@@ -1,0 +1,24 @@
+[importlinter]
+root_package = simulator
+
+# Camadas do simulador (UI pode depender de Core/Objects/DSL; Core não pode voltar para UI)
+[contract:layers_simulator]
+type = layers
+layers =
+    simulator.ui
+    simulator.core
+    simulator.objects
+    simulator.dsl
+
+# Proíbe PyQt/UI no core/dsl/objects (defesa extra)
+[contract:forbid_pyqt_in_core]
+type = forbidden
+source_modules =
+    simulator.core
+    simulator.dsl
+    simulator.objects
+forbidden_modules =
+    simulator.ui
+    design
+    PyQt5
+    PyQt6

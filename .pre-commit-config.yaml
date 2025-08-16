@@ -1,6 +1,6 @@
-﻿repos:
+repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -9,37 +9,59 @@
       - id: check-toml
       - id: debug-statements
 
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
+        args: ["--in-place","--remove-all-unused-imports","--remove-unused-variables","--ignore-init-module-imports"]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 6.0.1
+    hooks:
+      - id: isort
+
   - repo: https://github.com/psf/black
-    rev: 24.4.2
+    rev: 25.1.0
     hooks:
       - id: black
         additional_dependencies: ["click<9"]
         args: ["--safe"]
 
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-
-  # Flake8 crítico (só erros sérios)
   - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
+    rev: 7.3.0
     hooks:
       - id: flake8
         name: flake8 (critical)
         args: ["--select=E9,F63,F7,F82"]
-        additional_dependencies: []
 
-  # Flake8 completo (manual)
   - repo: https://github.com/pycqa/flake8
-    rev: 7.1.1
+    rev: 7.3.0
     hooks:
       - id: flake8
         name: flake8 (full)
         stages: [manual]
-        additional_dependencies: []
 
-# NÃO tocar nessas árvores nesta fase (incluí as legadas):
-exclude: |
-  ^(design/ui/|simulator/ui/|design/objects/|simulator/objects/|BRICSIM_Simulator/|BRICSSIM_Designer/)|
-  ^build/|^dist/|^.venv/|^venv/|^\.git/|__pycache__
+  - repo: local
+    hooks:
+      - id: forbid-pyqt-in-core
+        name: Forbid PyQt in core/dsl/objects
+        entry: python tools/check_forbidden_imports.py
+        language: system
+        pass_filenames: false
+
+      - id: import-linter-simulator
+        name: import-linter (simulator)
+        entry: lint-imports --config .importlinter
+        language: python
+        additional_dependencies: [import-linter]
+        pass_filenames: false
+
+      - id: import-linter-design
+        name: import-linter (design, manual)
+        entry: lint-imports --config .importlinter.design
+        language: python
+        additional_dependencies: [import-linter]
+        pass_filenames: false
+        stages: [manual]
+
+exclude: '^(design/ui/|simulator/ui/|design/objects/|simulator/objects/|BRICSIM_Simulator/|BRICSSIM_Designer/|build/|dist/|\.venv/|venv/|\.git/|__pycache__)'
