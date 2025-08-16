@@ -136,7 +136,7 @@ def _extrair_tela_tbr(canvas, nome_tela):
 
 # ---------------- Save/Load ----------------
 def salvar_simulacao(main_window):
-    from canvas_simulator import TouchAreaItem
+    pass
 
     caminho, _ = QFileDialog.getSaveFileName(
         None, "Salvar Simulação", "", "Simulação BRICSSIM (*.sbr)"
@@ -162,7 +162,7 @@ def salvar_simulacao(main_window):
 
 
 def carregar_design(canvas):
-    from canvas_simulator import TouchAreaItem
+    pass
 
     caminho, _ = QFileDialog.getOpenFileName(
         None, "Carregar Design", "", "Tela BRICSSIM (*.tbr)"
@@ -176,7 +176,7 @@ def carregar_design(canvas):
 
 
 def salvar_modelo(main_window):
-    from canvas_simulator import TouchAreaItem
+    pass
 
     caminho, _ = QFileDialog.getSaveFileName(
         None, "Salvar Modelo", "", "Modelo BRICSSIM (*.mbr)"
@@ -395,7 +395,7 @@ def salvar_modelo(main_window):
 
 
 def carregar_modelo(main_window):
-    from canvas_simulator import SimuladorCanvas, TouchAreaItem
+    from canvas_simulator import SimuladorCanvas
 
     caminho, _ = QFileDialog.getOpenFileName(
         None, "Carregar Modelo", "", "Modelo BRICSSIM (*.mbr)"
@@ -431,7 +431,7 @@ def carregar_modelo(main_window):
 
 
 def carregar_simulacao(canvas):
-    from canvas_simulator import TouchAreaItem
+    pass
 
     caminho, _ = QFileDialog.getOpenFileName(
         None, "Carregar Simulação", "", "Simulação BRICSSIM (*.sbr)"

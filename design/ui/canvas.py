@@ -1,12 +1,10 @@
 import json
 import math
 import xml.etree.ElementTree as ET
-from xml.dom import minidom
 
 import sip
-import svg.path
 from dialogs import PropriedadesDialog  # se ainda não tiver
-from PyQt5.QtCore import QLine, QLineF, QPointF, QRectF, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import QLineF, QPointF, QRectF, Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import (
     QBrush,
     QColor,
@@ -19,7 +17,6 @@ from PyQt5.QtGui import (
     QPolygonF,
     QTransform,
 )
-from PyQt5.QtSvg import QGraphicsSvgItem
 from PyQt5.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -345,7 +342,7 @@ class EditablePolyline(QGraphicsItemGroup):
             self._adicionar_handle(pt)
 
     def to_dict(self):
-        pontos = [[p.x(), p.y()] for p in self.points]
+        [[p.x(), p.y()] for p in self.points]
         t = self.transform()
         ribbon = self._get_ribbon()
         tamanho_ext = getattr(ribbon, "tamanho_extremidade", None) if ribbon else None
@@ -1717,7 +1714,6 @@ class SvgCanvas(QGraphicsView):
             elif obj["tipo"] == "imagem":
                 import base64
 
-                from PyQt5.QtCore import QBuffer
 
                 imagem_bytes = base64.b64decode(obj["imagem_base64"])
                 image = QPixmap()
@@ -1977,7 +1973,7 @@ class SvgCanvas(QGraphicsView):
     def _pixmap_to_base64(self, pixmap):
         import base64
 
-        from PyQt5.QtCore import QBuffer, QByteArray
+        from PyQt5.QtCore import QBuffer
 
         buffer = QBuffer()
         buffer.open(QBuffer.WriteOnly)

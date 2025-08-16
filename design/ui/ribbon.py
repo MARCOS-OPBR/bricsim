@@ -1,5 +1,5 @@
 # ribbon.py
-from canvas import EditableLine, EditablePolyline, SvgCanvas
+from canvas import EditableLine, EditablePolyline
 from functions import (
     abrir_novo_documento,
     alterar_cor_contorno,
@@ -20,7 +20,7 @@ from functions import (
     salvar_projeto,
 )
 from PyQt5.QtCore import QSize, Qt
-from PyQt5.QtGui import QColor, QFont, QIcon
+from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtWidgets import (
     QColorDialog,
     QComboBox,

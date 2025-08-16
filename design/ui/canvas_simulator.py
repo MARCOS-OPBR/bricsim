@@ -9,7 +9,6 @@ import scipy.signal as signal
 import re
 from trends import open_trends
 from faceplate import open_faceplate
-from controle import aplicar_controle_PID
 
 
 from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene,QDialog,QVBoxLayout,QLabel,QPushButton,
@@ -19,8 +18,8 @@ from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene,QDialog,QVBoxLayout,Q
                              QSplitter,QListWidgetItem,QFormLayout
                              )
  
-from PyQt5.QtCore import Qt, QTimer, QPointF,QRectF 
-from PyQt5.QtGui import QColor, QFont,QPainter,QBrush,QPen,QCursor
+from PyQt5.QtCore import Qt, QTimer, QRectF 
+from PyQt5.QtGui import QColor, QPainter, QBrush, QPen
 
 # compat durante a migração
 try:
@@ -42,7 +41,6 @@ if designer_path not in sys.path:
 # 🔹 Importa as classes direto do Designer
 from canvas import EditableLine, EditablePolyline, EditableVariable, SvgObjectItem
 
-from functions import salvar_simulacao, carregar_design, carregar_simulacao, carregar_modelo
 
 def _fill_form(self, it):
     if not it:
@@ -1251,7 +1249,7 @@ class SimuladorCanvas(QGraphicsView):
 
     def _rodar_leis_locais_compat(self, skip_lhs: set):
         from singleton import VariaveisGlobais
-        vg = VariaveisGlobais()
+        VariaveisGlobais()
         skip_lhs = skip_lhs or set()
         for var in self.variaveis:
             lei = (getattr(var, "lei", "") or "").strip()
@@ -1942,7 +1940,6 @@ class SimuladorCanvas(QGraphicsView):
         - Se 'tag' vier None, gera DI###.
         - Retorna a TAG criada/garantida.
         """
-        from PyQt5.QtWidgets import QGraphicsTextItem
         vg = VariaveisGlobais()
 
         # define nome
